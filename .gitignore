@@ -1,0 +1,106 @@
+# =========================
+
+# Python
+
+# =========================
+
+**pycache**/
+*.py[cod]
+*$py.class
+
+# Bytecode
+
+*.pyc
+*.pyo
+*.pyd
+
+# Distribution / packaging
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# =========================
+
+# Virtual Environments
+
+# =========================
+
+llm_env/
+venv/
+env/
+.venv/
+
+# =========================
+
+# Jupyter
+
+# =========================
+
+.ipynb_checkpoints/
+
+# =========================
+
+# Logs
+
+# =========================
+
+*.log
+
+# =========================
+
+# PyTorch / Model Checkpoints
+
+# =========================
+
+*.pt
+*.pth
+checkpoints/
+runs/
+wandb/
+
+# =========================
+
+# macOS
+
+# =========================
+
+.DS_Store
+
+# =========================
+
+# VS Code
+
+# =========================
+
+.vscode/
+
+# =========================
+
+# Testing / Coverage
+
+# =========================
+
+.coverage
+htmlcov/
+
+# =========================
+
+# Temporary files
+
+# =========================
+
+*.tmp
+*.swp
+*~
+
+# =========================
+
+# Data (Optional)
+
+# =========================
+
+# Uncomment if dataset should not be committed
+
+# data/
