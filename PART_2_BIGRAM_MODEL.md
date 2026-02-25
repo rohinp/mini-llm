@@ -17,13 +17,18 @@ Pure statistical modeling.
 
 A bigram model assumes:
 
-[
+$$
 P(t_{i+1} \mid t_i)
-]
+$$
 
 The next token depends only on the current token.
 
 This is called **1-token memory**.
+
+
+`The Math: Conditional Probability`
+
+In a bigram model, we simplify the probability of a whole sentence by assuming each word depends only on its immediate predecessor. This is known as a First-Order Markov Assumption.The probability of a word $w_n$ given the previous word $w_{n-1}$ is calculated as:$$P(w_n | w_{n-1}) = \frac{Count(w_{n-1}, w_n)}{Count(w_{n-1})}$$In plain English:To find the chance of "cat" following "the," you count how many times "the cat" appears in your text and divide it by the total number of times "the" appears.
 
 ---
 
@@ -41,9 +46,9 @@ Bigram = memory size 1.
 
 We construct a matrix:
 
-[
+$$
 \text{bigram_counts} \in \mathbb{R}^{V \times V}
-]
+$$
 
 Where:
 
@@ -51,9 +56,9 @@ Where:
 
 Each entry:
 
-[
+$$
 \text{bigram_counts}[i, j]
-]
+$$
 
 Represents:
 
@@ -85,9 +90,9 @@ Column = next token
 
 We normalize each row:
 
-[
+$$
 P(j \mid i) = \frac{\text{count}(i, j)}{\sum_k \text{count}(i, k)}
-]
+$$
 
 Now each row sums to 1.
 
@@ -131,9 +136,9 @@ Observations:
 
 Because it only models:
 
-[
+$$
 P(t_{i+1} \mid t_i)
-]
+$$
 
 It does NOT model:
 
@@ -152,27 +157,27 @@ If vocab_size = V
 
 Bigram size:
 
-[
+$$
 V^2
-]
+$$
 
 Trigram size:
 
-[
+$$
 V^3
-]
+$$
 
 4-gram size:
 
-[
+$$
 V^4
-]
+$$
 
 Growth is exponential:
 
-[
-O(V^{memory})
-]
+$$
+O(V^{\text{memory}})
+$$
 
 ---
 
@@ -180,27 +185,27 @@ O(V^{memory})
 
 If:
 
-[
+$$
 V = 100
-]
+$$
 
 Bigram:
 
-[
-100^2 = 10,000
-]
+$$
+100^2 = 10{,}000
+$$
 
 Trigram:
 
-[
-100^3 = 1,000,000
-]
+$$
+100^3 = 1{,}000{,}000
+$$
 
 4-gram:
 
-[
-100^4 = 100,000,000
-]
+$$
+100^4 = 100{,}000{,}000
+$$
 
 This quickly becomes impossible for real vocab sizes (~50,000 tokens).
 
@@ -239,15 +244,15 @@ This leads to transformers.
 
 Statistical bigram:
 
-[
+$$
 P(t_{i+1} \mid t_i)
-]
+$$
 
 Neural bigram:
 
-[
+$$
 P(t_{i+1} \mid \text{Embedding}(t_i))
-]
+$$
 
 Instead of storing counts:
 

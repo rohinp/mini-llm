@@ -10,9 +10,9 @@ The goal is clarity. No magic. No black boxes.
 
 A language model estimates:
 
-```
-P(next token | previous tokens)
-```
+$$
+P(\text{next token} \mid \text{previous tokens})
+$$
 
 Example:
 
@@ -96,9 +96,9 @@ Example:
 
 If Tiny Shakespeare contains 65 unique characters:
 
-[
-\text{vocab_size} = 65
-]
+$$
+\text{vocab\_size} = 65
+$$
 
 This is fixed after analyzing dataset.
 
@@ -110,9 +110,9 @@ How many tokens the model sees at once.
 
 Example:
 
-[
-\text{sequence_length} = 128
-]
+$$
+\text{sequence\_length} = 128
+$$
 
 That means:
 
@@ -149,15 +149,15 @@ Batch size = number of sequences processed in parallel.
 
 If:
 
-[
-\text{batch_size} = 32
-]
+$$
+\text{batch\_size} = 32
+$$
 
 and
 
-[
-\text{sequence_length} = 128
-]
+$$
+\text{sequence\_length} = 128
+$$
 
 Then tensor shape:
 
@@ -235,9 +235,9 @@ Embedding layer converts:
 
 If:
 
-[
-\text{embedding_dimension} = 64
-]
+$$
+\text{embedding\_dimension} = 64
+$$
 
 Each token becomes a 64-length vector.
 
@@ -286,9 +286,9 @@ Why not entire novel?
 
 Because attention complexity is:
 
-[
+$$
 O(n^2)
-]
+$$
 
 If sequence length doubles,
 computation roughly quadruples.
@@ -303,9 +303,9 @@ Each token compares with every other token.
 
 Attention matrix size:
 
-[
+$$
 N \times N
-]
+$$
 
 Example:
 
@@ -339,15 +339,15 @@ This is why attention is quadratic.
 
 Suppose we have a loss function:
 
-[
+$$
 L(w)
-]
+$$
 
 Gradient:
 
-[
+$$
 \frac{dL}{dw}
-]
+$$
 
 It tells us:
 
@@ -357,27 +357,27 @@ It tells us:
 
 ## Example
 
-[
+$$
 f(x) = x^2
-]
+$$
 
 Derivative:
 
-[
+$$
 \frac{df}{dx} = 2x
-]
+$$
 
 If:
 
-[
+$$
 x = 3
-]
+$$
 
 Then:
 
-[
+$$
 \text{gradient} = 6
-]
+$$
 
 Meaning:
 Increasing x increases loss.
@@ -390,13 +390,13 @@ Gradient points toward steepest increase.
 
 To reduce loss:
 
-[
+$$
 w_{\text{new}} = w - \eta \cdot \frac{dL}{dw}
-]
+$$
 
 Where:
 
-* ( \eta ) = learning rate
+* $\eta$ = learning rate
 
 If gradient is positive:
 → decrease weight
@@ -416,12 +416,12 @@ loss.backward()
 
 Computes:
 
-[
+$$
 \frac{\partial L}{\partial w_1},
 \frac{\partial L}{\partial w_2},
 \frac{\partial L}{\partial w_3},
-...
-]
+\ldots
+$$
 
 Gradients are stored in:
 
@@ -454,9 +454,9 @@ Zeroing grads first avoids mixing gradient information between batches.
 
 Update rule:
 
-[
+$$
 w = w - \eta \cdot \text{gradient}
-]
+$$
 
 If:
 

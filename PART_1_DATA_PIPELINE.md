@@ -41,9 +41,9 @@ vocab_size = len(chars)
 
 Mathematically:
 
-[
-\text{vocab_size} = |{\text{unique characters}}|
-]
+$$
+\text{vocab\_size} = |\text{unique characters}|
+$$
 
 Example:
 If 65 unique characters exist → vocab_size = 65
@@ -81,14 +81,15 @@ Important:
 
 Shape of data:
 
-[
+$$
 \text{data.shape} = (N,)
-]
+$$
 
 Where:
-[
+
+$$
 N = \text{total number of characters}
-]
+$$
 
 This is a 1D tensor representing the entire novel.
 
@@ -114,15 +115,15 @@ Language modeling objective:
 
 Given tokens:
 
-[
-[t_0, t_1, t_2, ..., t_{127}]
-]
+$$
+[t_0, t_1, t_2, \ldots, t_{127}]
+$$
 
 Predict:
 
-[
-[t_1, t_2, t_3, ..., t_{128}]
-]
+$$
+[t_1, t_2, t_3, \ldots, t_{128}]
+$$
 
 Target is shifted by one position.
 
@@ -152,12 +153,13 @@ y = torch.stack([data_source[i+1:i+T+1] for i in ix])
 
 Resulting shapes:
 
-[
+$$
 x.shape = (B, T)
-]
-[
+$$
+
+$$
 y.shape = (B, T)
-]
+$$
 
 ---
 
@@ -178,18 +180,19 @@ This is core to Stochastic Gradient Descent.
 
 If:
 
-[
+$$
 B = 32
-]
-[
+$$
+
+$$
 T = 128
-]
+$$
 
 Then model produces:
 
-[
+$$
 32 \times 128 = 4096
-]
+$$
 
 predictions per forward pass.
 
