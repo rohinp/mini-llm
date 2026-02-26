@@ -42,7 +42,7 @@ vocab_size = len(chars)
 Mathematically:
 
 $$
-\text{vocab\_size} = |\text{unique characters}|
+vocab\_size = |\text{unique characters}|
 $$
 
 Example:

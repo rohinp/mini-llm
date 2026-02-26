@@ -97,7 +97,7 @@ Example:
 If Tiny Shakespeare contains 65 unique characters:
 
 $$
-\text{vocab\_size} = 65
+vocab\_size = 65
 $$
 
 This is fixed after analyzing dataset.
@@ -111,7 +111,7 @@ How many tokens the model sees at once.
 Example:
 
 $$
-\text{sequence\_length} = 128
+sequence\_length = 128
 $$
 
 That means:
@@ -150,13 +150,13 @@ Batch size = number of sequences processed in parallel.
 If:
 
 $$
-\text{batch\_size} = 32
+batch\_size = 32
 $$
 
 and
 
 $$
-\text{sequence\_length} = 128
+sequence\_length = 128
 $$
 
 Then tensor shape:
@@ -236,7 +236,7 @@ Embedding layer converts:
 If:
 
 $$
-\text{embedding\_dimension} = 64
+embedding\_dimension = 64
 $$
 
 Each token becomes a 64-length vector.

@@ -28,7 +28,13 @@ This is called **1-token memory**.
 
 `The Math: Conditional Probability`
 
-In a bigram model, we simplify the probability of a whole sentence by assuming each word depends only on its immediate predecessor. This is known as a First-Order Markov Assumption.The probability of a word $w_n$ given the previous word $w_{n-1}$ is calculated as:$$P(w_n | w_{n-1}) = \frac{Count(w_{n-1}, w_n)}{Count(w_{n-1})}$$In plain English:To find the chance of "cat" following "the," you count how many times "the cat" appears in your text and divide it by the total number of times "the" appears.
+In a bigram model, we simplify the probability of a whole sentence by assuming each word depends only on its immediate predecessor. This is known as a First-Order Markov Assumption.The probability of a word $w_n$ given the previous word $w_{n-1}$ is calculated as:
+
+$$
+P(w_n | w_{n-1}) = \frac{Count(w_{n-1}, w_n)}{Count(w_{n-1})}
+$$
+
+In plain English:To find the chance of "cat" following "the," you count how many times "the cat" appears in your text and divide it by the total number of times "the" appears.
 
 ---
 
@@ -47,17 +53,17 @@ Bigram = memory size 1.
 We construct a matrix:
 
 $$
-\text{bigram_counts} \in \mathbb{R}^{V \times V}
+bigram\_counts \in \mathbb{R}^{V \times V}
 $$
 
 Where:
 
-* ( V = \text{vocab_size} )
+* ( V = vocab\_size )
 
 Each entry:
 
 $$
-\text{bigram_counts}[i, j]
+bigram\_counts [i, j]
 $$
 
 Represents:
