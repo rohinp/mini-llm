@@ -32,7 +32,9 @@ def generate(start_token, max_new_tokens=100):
 
     for _ in range(max_new_tokens):
         probs = bigram_probs[current]
-        next_token = torch.multinomial(probs, num_samples=1).item()
+        next_token = torch.multinomial(
+            probs, num_samples=1
+        ).item()  # more detial on this
         generated.append(next_token)
         current = next_token
 

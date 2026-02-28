@@ -1,9 +1,16 @@
-# Part 2 — Bigram Language Model
+# Part 2 — Bigram Language Model (Deep Dive)
+
+In this section, we implemented a **Bigram Language Model**. The doccument contains both:
+
+* The statistical concept
+* The PyTorch mechanics behind it
 
 Here is the [code](bigram.py)
-In this section, we build the simplest possible language model: a **Bigram Model**.
-
 This model predicts the next token using only the current token.
+
+$$
+P(t_{i+1} \mid t_i)
+$$
 
 No embeddings.
 No neural networks.
@@ -13,13 +20,15 @@ Pure statistical modeling.
 
 ---
 
-# 1. What Is a Bigram Model?
+# 1. Bigram Model Definition
 
 A bigram model assumes:
 
 $$
 P(t_{i+1} \mid t_i)
 $$
+
+Meaning:
 
 The next token depends only on the current token.
 
@@ -72,19 +81,15 @@ Represents:
 
 ---
 
-## Visual Representation
-
-If vocab_size = 5:
+## Example (Small Vocab = 3)
 
 ```
-        Next Token
-        0   1   2   3   4
-Current
-   0    2   5   0   1   3
-   1    4   0   7   2   1
-   2    1   3   2   6   0
-   3    0   2   4   1   8
-   4    5   1   0   3   2
+bigram_counts =
+[
+ [2, 3, 5],
+ [4, 1, 5],
+ [1, 1, 8]
+]
 ```
 
 Row = current token
@@ -92,34 +97,260 @@ Column = next token
 
 ---
 
-# 3. Converting Counts to Probabilities
+# 3. Row Normalization (Counts → Probabilities)
 
-We normalize each row:
+We convert counts into probabilities using:
 
-$$
-P(j \mid i) = \frac{\text{count}(i, j)}{\sum_k \text{count}(i, k)}
-$$
+```python
+bigram_probs = bigram_counts.float()
+bigram_probs = bigram_probs / bigram_probs.sum(dim=1, keepdim=True)
+```
+
+Let’s understand this line fully.
+
+---
+
+## Step 1 — Row-wise Sum
+
+```python
+bigram_probs.sum(dim=1)
+```
+
+`dim=1` means:
+
+Sum across columns → row-wise sum.
+
+Example:
+
+```
+Row 0: 2 + 3 + 5 = 10
+Row 1: 4 + 1 + 5 = 10
+Row 2: 1 + 1 + 8 = 10
+```
+
+Result:
+
+```
+[10, 10, 10]
+```
+
+Shape:
+
+```
+(3,)
+```
+
+---
+
+## Step 2 — Why `keepdim=True`?
+
+Without `keepdim=True`, shape = `(3,)`
+
+With `keepdim=True`, shape = `(3, 1)`
+
+```
+[
+ [10],
+ [10],
+ [10]
+]
+```
+
+This allows proper broadcasting during division.
+
+---
+
+## Step 3 — Broadcasting Division
+
+We divide:
+
+```
+(3,3) / (3,1)
+```
+
+Broadcasting expands `(3,1)` to:
+
+```
+[
+ [10,10,10],
+ [10,10,10],
+ [10,10,10]
+]
+```
+
+So division becomes:
+
+```
+[
+ [2/10, 3/10, 5/10],
+ [4/10, 1/10, 5/10],
+ [1/10, 1/10, 8/10]
+]
+```
+
+Result:
+
+```
+[
+ [0.2, 0.3, 0.5],
+ [0.4, 0.1, 0.5],
+ [0.1, 0.1, 0.8]
+]
+```
 
 Now each row sums to 1.
 
-Each row is a probability distribution over next tokens.
+---
+
+## Important Rule
+
+After normalization:
+
+Every row must satisfy:
+
+$$
+sum\_j P(j \mid i) = 1
+$$
+
+If a row was:
+
+```
+[0, 0, 10]
+```
+
+After normalization:
+
+```
+[0, 0, 1]
+```
 
 ---
 
-# 4. Text Generation Process
+## Why Convert to Float?
 
-Generation algorithm:
+We use:
 
-1. Start with initial token
-2. Look up probability row for that token
-3. Sample next token
-4. Repeat
+```python
+bigram_counts.float()
+```
 
-This is probabilistic generation.
+Because:
+
+* Probabilities require fractional values
+* Integers cannot represent decimals
+* Neural networks operate in floating point
+
+Probabilities must satisfy:
+
+$$
+0 \le p \le 1
+$$
+
+So float dtype is required.
 
 ---
 
-# 5. Observed Output Behavior
+# 4. Sampling with torch.multinomial
+
+Generation uses:
+
+```python
+next_token = torch.multinomial(probs, num_samples=1).item()
+```
+
+Let’s break this down.
+
+---
+
+## What Is `probs`?
+
+Example:
+
+```
+probs = [0.2, 0.5, 0.3]
+```
+
+Meaning:
+
+* 20% chance → index 0
+* 50% chance → index 1
+* 30% chance → index 2
+
+---
+
+## What Does `torch.multinomial()` Do?
+
+It samples an index based on probability weights.
+
+If:
+
+```
+probs = [0, 0, 1]
+```
+
+It will always return:
+
+```
+2
+```
+
+If:
+
+```
+probs = [0.2, 0.5, 0.3]
+```
+
+It randomly returns:
+
+* 1 about 50% of the time
+* 2 about 30% of the time
+* 0 about 20% of the time
+
+---
+
+## What Does `num_samples=1` Mean?
+
+It returns one sampled index.
+
+If `num_samples=3`, it would return three sampled indices.
+
+---
+
+## Why `.item()`?
+
+`multinomial()` returns a tensor:
+
+```
+tensor([1])
+```
+
+`.item()` converts it into a Python integer:
+
+```
+1
+```
+
+---
+
+# 5. Why Sampling Creates Diversity
+
+If we used:
+
+```python
+torch.argmax(probs)
+```
+
+The model would always choose the most likely token.
+
+That would make output deterministic and repetitive.
+
+Sampling introduces controlled randomness.
+
+This is what gives text generation variety.
+
+---
+
+# 6. Observed Output Behavior
 
 Example output:
 
@@ -187,7 +418,7 @@ $$
 
 ---
 
-## Example
+Exponential growth:
 
 If:
 
@@ -221,7 +452,7 @@ This quickly becomes impossible for real vocab sizes (~50,000 tokens).
 
 Bigram models attempt to:
 
-Memorize exact discrete combinations.
+Memorize exact token transitions.
 
 They do not learn continuous representations.
 
@@ -278,10 +509,13 @@ This introduces:
 
 You now understand:
 
-* What a bigram model is
-* How to construct probability tables
-* Why generation looks semi-realistic
-* Why long-term coherence fails
+* How bigram probability tables are constructed
+* How row normalization works (mechanically)
+* Why `keepdim=True` matters
+* How broadcasting works in PyTorch
+* Why probabilities require floats
+* How `torch.multinomial()` samples
+* Why sampling creates creative output
 * Why n-grams scale exponentially
 * Why deep learning replaced discrete n-grams
 

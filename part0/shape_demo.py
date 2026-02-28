@@ -1,8 +1,8 @@
 import torch
 
-batch_size = 2
-sequence_length = 5
-embedding_dim = 3
+batch_size = 2  # numer of sentence
+sequence_length = 5  # length of the sentence
+embedding_dim = 3  # number of ways a token can be represented.
 
 x = torch.randn(batch_size, sequence_length, embedding_dim)
 
