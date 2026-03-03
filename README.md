@@ -22,4 +22,5 @@ We will go from raw text → tokens → embeddings → transformer → training 
 1. Start with [Foundations](FOUNDATIONS.md)
 2. [Data Pipeline](PART_1_DATA_PIPELINE.md)
 2. [Bigram model](PART_2_BIGRAM_MODEL.md)
-3. WIP.
+3. [Neural Bigram Foundations](PART_3_NEURAL_BGRAM_FPUNDATIONS.md)
+4. WIP...

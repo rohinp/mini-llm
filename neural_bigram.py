@@ -33,3 +33,10 @@ class NeuralBigramModel(nn.Module):
         loss = F.cross_entropy(logits, targets)
 
         return logits, loss
+
+    def get_batch(split):
+        data_source = train_data if split == "train" else val_data
+        ix = torch.randint(len(data_source) - sequence_length, (batch_size,))
+        x = torch.stack([data_source[i : i + sequence_length] for i in ix])
+        y = torch.stack([data_source[i + 1 : i + sequence_length + 1] for i in ix])
+        return x, y
