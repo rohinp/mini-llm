@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stepwise Bigram Model Visualizer</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #111827;
+            --panel-2: #1f2937;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --accent: #38bdf8;
+            --accent-2: #22c55e;
+            --border: #334155;
+            --warn: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            margin: 0 0 12px;
+        }
+
+        p {
+            color: var(--muted);
+            margin-top: 0;
+        }
+
+        .hero,
+        .panel {
+            background: rgba(17, 24, 39, 0.92);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .hero {
+            padding: 24px;
+            margin-bottom: 18px;
+        }
+
+        .panel {
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 130px;
+            resize: vertical;
+            background: #020617;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            font: inherit;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        button {
+            border: 1px solid var(--border);
+            background: var(--panel-2);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button.primary {
+            background: var(--accent);
+            color: #082f49;
+            border-color: transparent;
+        }
+
+        button.success {
+            background: var(--accent-2);
+            color: #052e16;
+            border-color: transparent;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .step-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .step-card {
+            padding: 14px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: #0b1220;
+        }
+
+        .step-card.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35) inset;
+        }
+
+        .step-card.done {
+            border-color: rgba(34, 197, 94, 0.6);
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #172554;
+            color: #bfdbfe;
+            margin-bottom: 8px;
+        }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 18px;
+        }
+
+        .mini-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .table-wrap {
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: #020617;
+            max-height: 520px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 520px;
+        }
+
+        th,
+        td {
+            border: 1px solid #1e293b;
+            padding: 8px 10px;
+            text-align: center;
+            white-space: nowrap;
+            font-size: 14px;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: #0b1220;
+            z-index: 1;
+        }
+
+        td.rowhdr {
+            position: sticky;
+            left: 0;
+            background: #0b1220;
+            font-weight: 700;
+            z-index: 1;
+        }
+
+        .explain {
+            background: #0b1220;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .token-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .token-chip {
+            border: 1px solid var(--border);
+            background: #111827;
+            color: #dbeafe;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 13px;
+        }
+
+        .pair-list {
+            max-height: 220px;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px;
+            background: #020617;
+        }
+
+        .pair-item {
+            padding: 6px 0;
+            border-bottom: 1px dashed #1e293b;
+            font-size: 14px;
+        }
+
+        .pair-item:last-child {
+            border-bottom: none;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            background: #020617;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            font: inherit;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .generated {
+            min-height: 80px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: #020617;
+            padding: 14px;
+            font-size: 16px;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .warn {
+            color: var(--warn);
+        }
+
+        .legend {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 10px;
+        }
+
+        .heat {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 1px solid #334155;
+        }
+
+        @media (max-width: 960px) {
+
+            .row,
+            .mini-grid,
+            .step-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <section class="hero">
+            <h1>Stepwise Bigram Model Visualizer</h1>
+            <p>
+                This walks through a bigram model exactly the way a beginner should see it:
+                <span class="mono">initialize matrix → count bigrams → convert to float → normalize rows → generate
+                    text</span>.
+            </p>
+
+            <label for="corpus">Training corpus</label>
+            <textarea id="corpus">the cat sat on the mat
+the cat ate the fish
+the fish swam away
+the cat saw the fish</textarea>
+
+            <div class="controls">
+                <button class="primary" id="resetBtn">Reset + Build Vocab</button>
+                <button id="step1Btn">1. Zero Matrix</button>
+                <button id="step2Btn">2. Count Bigrams</button>
+                <button id="step3Btn">3. Convert to Float</button>
+                <button id="step4Btn">4. Normalize Rows</button>
+                <button class="success" id="step5Btn">5. Generate Text</button>
+            </div>
+
+            <div class="step-grid" id="stepGrid"></div>
+        </section>
+
+        <div class="row">
+            <section class="panel">
+                <h2 id="panelTitle">Current State</h2>
+                <div class="explain" id="stepExplanation"></div>
+                <div id="matrixContainer"></div>
+                <div class="legend" id="legend"></div>
+            </section>
+
+            <section>
+                <div class="panel">
+                    <h2>Vocabulary</h2>
+                    <p>Each word gets one row and one column. That gives us a <span class="mono">vocab × vocab</span>
+                        matrix.</p>
+                    <div class="token-list" id="vocabContainer"></div>
+                </div>
+
+                <div class="panel">
+                    <h2>Observed Bigrams</h2>
+                    <p>These are adjacent token pairs from the corpus. Each pair adds <span class="mono">+1</span> to
+                        one matrix cell.</p>
+                    <div class="pair-list" id="pairsContainer"></div>
+                </div>
+
+                <div class="panel">
+                    <h2>Generation Controls</h2>
+                    <div class="mini-grid">
+                        <div>
+                            <label for="startToken">Start token</label>
+                            <input type="text" id="startToken" value="the" />
+                        </div>
+                        <div>
+                            <label for="genLength">Number of tokens</label>
+                            <input type="number" id="genLength" value="12" min="1" max="50" />
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="success" id="generateNowBtn">Generate Now</button>
+                    </div>
+                    <p class="muted">Generation only works after step 4, because the model needs probabilities.</p>
+                    <div class="generated" id="generatedText">Run the steps first, then generate text.</div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            rawText: "",
+            tokens: [],
+            vocab: [],
+            tokenToIndex: {},
+            pairs: [],
+            countMatrix: [],
+            floatMatrix: null,
+            probMatrix: null,
+            currentStep: 0,
+        };
+
+        const stepMeta = [
+            {
+                title: "Step 1 — Initialize zero matrix",
+                short: "Zero matrix",
+                desc: "Create a matrix of size vocab × vocab. Every cell starts at 0. Rows mean current token, columns mean next token.",
+            },
+            {
+                title: "Step 2 — Populate bigram counts",
+                short: "Count bigrams",
+                desc: "Read adjacent token pairs from the corpus. Every time we see (w1, w2), increment countMatrix[w1][w2] by 1.",
+            },
+            {
+                title: "Step 3 — Convert counts to float",
+                short: "To float",
+                desc: "Counts are integers, but probabilities need decimal values. So we convert the count matrix to float values.",
+            },
+            {
+                title: "Step 4 — Normalize each row",
+                short: "Normalize rows",
+                desc: "Divide each value in a row by that row's sum. Now each row becomes a probability distribution over next tokens.",
+            },
+            {
+                title: "Step 5 — Generate text",
+                short: "Generate",
+                desc: "Pick a start token. Then repeatedly sample the next token from that row's probability distribution.",
+            },
+        ];
+
+        const corpusEl = document.getElementById('corpus');
+        const vocabContainer = document.getElementById('vocabContainer');
+        const pairsContainer = document.getElementById('pairsContainer');
+        const matrixContainer = document.getElementById('matrixContainer');
+        const stepExplanation = document.getElementById('stepExplanation');
+        const panelTitle = document.getElementById('panelTitle');
+        const generatedText = document.getElementById('generatedText');
+        const legend = document.getElementById('legend');
+        const stepGrid = document.getElementById('stepGrid');
+
+        function tokenize(text) {
+            return text
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]+/g, ' ')
+                .split(/\s+/)
+                .filter(Boolean);
+        }
+
+        function buildInitialState() {
+            state.rawText = corpusEl.value;
+            state.tokens = tokenize(state.rawText);
+            state.vocab = [...new Set(state.tokens)];
+            state.tokenToIndex = Object.fromEntries(state.vocab.map((tok, i) => [tok, i]));
+            state.pairs = [];
+            for (let i = 0; i < state.tokens.length - 1; i++) {
+                state.pairs.push([state.tokens[i], state.tokens[i + 1]]);
+            }
+            state.countMatrix = [];
+            state.floatMatrix = null;
+            state.probMatrix = null;
+            state.currentStep = 0;
+            document.getElementById('startToken').value = state.vocab[0] || '';
+            renderAll();
+        }
+
+        function makeZeroMatrix(size) {
+            return Array.from({ length: size }, () => Array(size).fill(0));
+        }
+
+        function doStep1() {
+            state.countMatrix = makeZeroMatrix(state.vocab.length);
+            state.currentStep = Math.max(state.currentStep, 1);
+            renderAll();
+        }
+
+        function doStep2() {
+            if (!state.countMatrix.length) doStep1();
+            state.countMatrix = makeZeroMatrix(state.vocab.length);
+            for (const [w1, w2] of state.pairs) {
+                const i = state.tokenToIndex[w1];
+                const j = state.tokenToIndex[w2];
+                state.countMatrix[i][j] += 1;
+            }
+            state.currentStep = Math.max(state.currentStep, 2);
+            renderAll();
+        }
+
+        function doStep3() {
+            if (state.currentStep < 2) doStep2();
+            state.floatMatrix = state.countMatrix.map(row => row.map(x => Number(x)));
+            state.currentStep = Math.max(state.currentStep, 3);
+            renderAll();
+        }
+
+        function doStep4() {
+            if (state.currentStep < 3) doStep3();
+            state.probMatrix = state.floatMatrix.map(row => {
+                const sum = row.reduce((a, b) => a + b, 0);
+                if (sum === 0) return row.map(() => 0);
+                return row.map(x => x / sum);
+            });
+            state.currentStep = Math.max(state.currentStep, 4);
+            renderAll();
+        }
+
+        function sampleFromDistribution(probs) {
+            const total = probs.reduce((a, b) => a + b, 0);
+            if (total === 0) return -1;
+            const r = Math.random();
+            let cumulative = 0;
+            for (let i = 0; i < probs.length; i++) {
+                cumulative += probs[i];
+                if (r <= cumulative) return i;
+            }
+            return probs.length - 1;
+        }
+
+        function doStep5() {
+            if (state.currentStep < 4) doStep4();
+            generateText();
+            state.currentStep = Math.max(state.currentStep, 5);
+            renderAll();
+        }
+
+        function generateText() {
+            if (!state.probMatrix) {
+                generatedText.textContent = 'Run step 4 first so the model has probabilities.';
+                return;
+            }
+
+            const startToken = document.getElementById('startToken').value.trim().toLowerCase();
+            const genLength = Math.max(1, Math.min(50, Number(document.getElementById('genLength').value) || 12));
+
+            if (!(startToken in state.tokenToIndex)) {
+                generatedText.innerHTML = `<span class="warn">Start token not found in vocab.</span>`;
+                return;
+            }
+
+            const output = [startToken];
+            let current = startToken;
+
+            for (let step = 0; step < genLength - 1; step++) {
+                const rowIndex = state.tokenToIndex[current];
+                const probs = state.probMatrix[rowIndex];
+                const nextIndex = sampleFromDistribution(probs);
+                if (nextIndex === -1) break;
+                const nextToken = state.vocab[nextIndex];
+                output.push(nextToken);
+                current = nextToken;
+            }
+
+            generatedText.textContent = output.join(' ');
+        }
+
+        function renderStepCards() {
+            stepGrid.innerHTML = '';
+            stepMeta.forEach((step, idx) => {
+                const el = document.createElement('div');
+                const stepNum = idx + 1;
+                let cls = 'step-card';
+                if (state.currentStep === stepNum) cls += ' active';
+                if (state.currentStep > stepNum) cls += ' done';
+                el.className = cls;
+                el.innerHTML = `
+          <div class="badge">${stepNum}</div>
+          <div><strong>${step.short}</strong></div>
+          <div class="muted" style="font-size:13px; margin-top:6px;">${step.desc}</div>
+        `;
+                stepGrid.appendChild(el);
+            });
+        }
+
+        function renderVocab() {
+            if (!state.vocab.length) {
+                vocabContainer.innerHTML = '<span class="muted">No vocabulary yet.</span>';
+                return;
+            }
+            vocabContainer.innerHTML = state.vocab
+                .map((tok, i) => `<span class="token-chip mono">${i}: ${tok}</span>`)
+                .join('');
+        }
+
+        function renderPairs() {
+            if (!state.pairs.length) {
+                pairsContainer.innerHTML = '<span class="muted">Need at least 2 tokens to form bigrams.</span>';
+                return;
+            }
+            pairsContainer.innerHTML = state.pairs
+                .map(([a, b], idx) => `<div class="pair-item mono">${idx + 1}. (${a} → ${b})</div>`)
+                .join('');
+        }
+
+        function getCurrentMatrix() {
+            if (state.currentStep >= 4 && state.probMatrix) return { matrix: state.probMatrix, type: 'prob' };
+            if (state.currentStep >= 3 && state.floatMatrix) return { matrix: state.floatMatrix, type: 'float' };
+            if (state.currentStep >= 1 && state.countMatrix.length) return { matrix: state.countMatrix, type: state.currentStep >= 2 ? 'count' : 'zero' };
+            return { matrix: null, type: 'none' };
+        }
+
+        function formatCell(value, type) {
+            if (type === 'prob') return value.toFixed(3);
+            if (type === 'float') return value.toFixed(1);
+            return String(value);
+        }
+
+        function cellBackground(value, type) {
+            if (type === 'none') return 'transparent';
+            let alpha = 0;
+            if (type === 'prob') alpha = value;
+            else if (type === 'float' || type === 'count') alpha = Math.min(1, value / 4);
+            else if (type === 'zero') alpha = 0;
+            return `rgba(56, 189, 248, ${alpha})`;
+        }
+
+        function renderMatrix() {
+            const { matrix, type } = getCurrentMatrix();
+            if (!matrix) {
+                matrixContainer.innerHTML = '<p class="muted">Click <span class="mono">Reset + Build Vocab</span> to begin.</p>';
+                legend.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="table-wrap"><table><thead><tr><th>current ↓ / next →</th>';
+            for (const tok of state.vocab) {
+                html += `<th class="mono">${tok}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+
+            matrix.forEach((row, i) => {
+                html += `<tr><td class="rowhdr mono">${state.vocab[i]}</td>`;
+                row.forEach(value => {
+                    html += `<td class="mono" style="background:${cellBackground(value, type)}">${formatCell(value, type)}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table></div>';
+            matrixContainer.innerHTML = html;
+
+            if (type === 'prob') {
+                legend.innerHTML = `
+          <span>Heatmap intensity = larger probability</span>
+          <span class="heat" style="background:rgba(56, 189, 248, 0.15)"></span><span>low</span>
+          <span class="heat" style="background:rgba(56, 189, 248, 0.50)"></span><span>medium</span>
+          <span class="heat" style="background:rgba(56, 189, 248, 0.95)"></span><span>high</span>
+        `;
+            } else if (type === 'count' || type === 'float') {
+                legend.innerHTML = '<span>Heatmap intensity = larger count</span>';
+            } else {
+                legend.innerHTML = '<span>All zeros: the matrix exists, but nothing has been counted yet.</span>';
+            }
+        }
+
+        function renderExplanation() {
+            if (state.currentStep === 0) {
+                panelTitle.textContent = 'Current State';
+                stepExplanation.innerHTML = `
+          <strong>Start here.</strong><br>
+          We first tokenize the corpus and collect the vocabulary. Then we can create a square matrix of shape
+          <span class="mono">vocab × vocab</span>.
+        `;
+                return;
+            }
+
+            const info = stepMeta[state.currentStep - 1];
+            panelTitle.textContent = info.title;
+
+            let extra = '';
+            if (state.currentStep === 1) {
+                extra = `Matrix shape: <span class="mono">${state.vocab.length} × ${state.vocab.length}</span>.`;
+            }
+            if (state.currentStep === 2) {
+                extra = `Every observed adjacent pair increments one cell. Example: if we see <span class="mono">("the", "cat")</span>, we add 1 to row <span class="mono">the</span>, column <span class="mono">cat</span>.`;
+            }
+            if (state.currentStep === 3) {
+                extra = `The values look similar, but their type changes conceptually from integer counts to decimal-ready numeric values.`;
+            }
+            if (state.currentStep === 4) {
+                extra = `Each row now sums to about <span class="mono">1.0</span>. That means each row is a probability distribution.`;
+            }
+            if (state.currentStep === 5) {
+                extra = `Generation rule: current token → look up its row → sample next token → repeat.`;
+            }
+
+            stepExplanation.innerHTML = `<strong>${info.desc}</strong><br><br>${extra}`;
+        }
+
+        function renderAll() {
+            renderStepCards();
+            renderVocab();
+            renderPairs();
+            renderExplanation();
+            renderMatrix();
+        }
+
+        document.getElementById('resetBtn').addEventListener('click', buildInitialState);
+        document.getElementById('step1Btn').addEventListener('click', doStep1);
+        document.getElementById('step2Btn').addEventListener('click', doStep2);
+        document.getElementById('step3Btn').addEventListener('click', doStep3);
+        document.getElementById('step4Btn').addEventListener('click', doStep4);
+        document.getElementById('step5Btn').addEventListener('click', doStep5);
+        document.getElementById('generateNowBtn').addEventListener('click', generateText);
+
+        buildInitialState();
+    </script>
+</body>
+
+</html>

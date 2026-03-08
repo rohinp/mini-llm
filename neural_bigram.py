@@ -40,3 +40,7 @@ class NeuralBigramModel(nn.Module):
         x = torch.stack([data_source[i : i + sequence_length] for i in ix])
         y = torch.stack([data_source[i + 1 : i + sequence_length + 1] for i in ix])
         return x, y
+
+
+model = NeuralBigramModel(vocab_size)
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
