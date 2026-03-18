@@ -67,14 +67,17 @@ batch_size = 4
 sequence_length = 8
 
 
-def get_batch(split):
+def get_batch(split, batch_size_override=None, sequence_length_override=None):
     data_source = train_data if split == "train" else val_data
 
-    # Random starting positions
-    ix = torch.randint(len(data_source) - sequence_length, (batch_size,))
+    bs = batch_size if batch_size_override is None else batch_size_override
+    sl = sequence_length if sequence_length_override is None else sequence_length_override
 
-    x = torch.stack([data_source[i : i + sequence_length] for i in ix])
-    y = torch.stack([data_source[i + 1 : i + sequence_length + 1] for i in ix])
+    # Random starting positions
+    ix = torch.randint(len(data_source) - sl, (bs,))
+
+    x = torch.stack([data_source[i : i + sl] for i in ix])
+    y = torch.stack([data_source[i + 1 : i + sl + 1] for i in ix])
 
     return x, y
 

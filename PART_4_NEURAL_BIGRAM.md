@@ -107,17 +107,29 @@ val_data = data[n:]
 
 # 6. Batch Generation
 
+Set a couple of knobs that control how much data we look at per step:
+
 ```python
-def get_batch(split):
+batch_size = 32       # how many chunks per gradient step
+sequence_length = 8   # how many characters per chunk
+```
+
+```python
+def get_batch(split, batch_size_override=None, sequence_length_override=None):
     data_source = train_data if split == "train" else val_data
 
-    ix = torch.randint(len(data_source) - sequence_length, (batch_size,))
+    bs = batch_size if batch_size_override is None else batch_size_override
+    sl = sequence_length if sequence_length_override is None else sequence_length_override
 
-    x = torch.stack([data_source[i:i+sequence_length] for i in ix])
-    y = torch.stack([data_source[i+1:i+sequence_length+1] for i in ix])
+    ix = torch.randint(len(data_source) - sl, (bs,))
+
+    x = torch.stack([data_source[i:i+sl] for i in ix])
+    y = torch.stack([data_source[i+1:i+sl+1] for i in ix])
 
     return x, y
 ```
+
+👉 Those optional override arguments let other scripts (like `neural_bigram.py`) plug in different batch sizes without editing this helper.
 
 ### Example:
 
@@ -224,6 +236,24 @@ How wrong is the prediction?
 
 ---
 
+## 🔹 Mini Number Walkthrough
+
+Assume a 3-token vocabulary. The model returns logits:
+
+```python
+logits = torch.tensor([2.0, 0.5, -1.0])
+```
+
+Softmax turns that into probabilities:
+
+```
+[0.71, 0.21, 0.08]
+```
+
+If the true next token is index 1, the loss is `-log(0.21) ≈ 1.56`. Higher probability for the correct token → lower loss.
+
+---
+
 # 10. Shape Flow
 
 Input:
@@ -274,6 +304,24 @@ for step in range(2000):
         print(step, loss.item())
 ```
 
+To check whether we are improving on both train and validation splits, evaluate in `torch.no_grad()` mode every few steps:
+
+```python
+@torch.no_grad()
+def estimate_loss():
+    model.eval()
+    out = {}
+    for split in ("train", "val"):
+        losses = torch.zeros(20)
+        for k in range(20):
+            xb, yb = get_batch(split)
+            _, loss = model(xb, yb)
+            losses[k] = loss.item()
+        out[split] = losses.mean().item()
+    model.train()
+    return out
+```
+
 ---
 
 ## 🔁 Training Flow
@@ -288,19 +336,22 @@ forward → loss → backward → update weights
 
 ```python
 def generate(self, idx, max_new_tokens):
-    for _ in range(max_new_tokens):
-        logits, _ = self(idx)
+    with torch.no_grad():
+        for _ in range(max_new_tokens):
+            logits, _ = self(idx)
 
-        logits = logits[:, -1, :]  # last token
+            logits = logits[:, -1, :]  # last token
 
-        probs = F.softmax(logits, dim=-1)
+            probs = F.softmax(logits, dim=-1)
 
-        idx_next = torch.multinomial(probs, num_samples=1)
+            idx_next = torch.multinomial(probs, num_samples=1)
 
-        idx = torch.cat((idx, idx_next), dim=1)
+            idx = torch.cat((idx, idx_next), dim=1)
 
     return idx
 ```
+
+`torch.multinomial(probs, num_samples=1)` draws one token ID using the probability distribution we just computed, so more likely tokens get sampled more often but everything still has a chance.
 
 ---
 
@@ -312,6 +363,8 @@ generated = model.generate(context, 200)
 
 print(decode(generated[0].tolist()))
 ```
+
+Remember to call `model.eval()` before sampling so any layers such as dropout switch to inference mode (our simple bigram model does not have them yet, but building the habit now helps later).
 
 ---
 
@@ -447,6 +500,17 @@ Bigram model only depends on current token, so only last token matters.
 
 **Answer:**
 PyTorch autograd handles backward; model only defines forward computation.
+
+---
+
+# 16. Putting It All Together
+
+1. **Vocabulary & data:** read the text, build `stoi/itos`, encode everything into a long tensor, and split into train/val.
+2. **Batches:** choose `batch_size`/`sequence_length`, then call `get_batch` to fetch parallel examples `(x, y)` where each `x` predicts the next token in `y`.
+3. **Model:** the embedding layer stores a learnable row of logits for every token; calling `forward` on a batch returns all logits and, if targets are provided, the cross-entropy loss.
+4. **Training loop:** repeatedly `forward → loss → backward → optimizer.step()`, and every few iterations run `estimate_loss()` to monitor both splits.
+5. **Generation:** switch to eval/no-grad mode, feed a starting context (e.g., `[0]`), and keep sampling the next token with `softmax + torch.multinomial`.
+6. **Decode:** turn the generated token IDs back into text with `decode`.
 
 ---
 
