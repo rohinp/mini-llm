@@ -24,9 +24,11 @@ self.token_embedding_table = nn.Embedding(vocab_size, vocab_size)
 
 This creates a weight matrix:
 
+$$
 [
 W \in \mathbb{R}^{V \times V}
 ]
+$$
 
 Where:
 
@@ -83,9 +85,11 @@ optimizer.step()
 
 Each logit value is updated using gradient descent:
 
+$$
 [
 w = w - \eta \cdot \frac{\partial Loss}{\partial w}
 ]
+$$
 
 Over time:
 
@@ -101,24 +105,28 @@ The model learns preference scores.
 Logits are raw scores.
 
 But probabilities must:
-
+$$
 [
 0 \le p \le 1
 ]
+$$
+
+$$
 [
 \sum p = 1
 ]
+$$
 
 Softmax converts logits into probabilities.
 
 ---
 
 ## Softmax Formula
-
+$$
 [
 P_i = \frac{e^{z_i}}{\sum_j e^{z_j}}
 ]
-
+$$
 Where:
 
 * ( z_i ) = logit
@@ -154,16 +162,19 @@ Now we have valid probabilities.
 # 4. Important Property of Softmax
 
 Softmax depends on **differences**, not absolute values.
-
+$$
 [
 softmax([100, 99, 98]) = softmax([2, 1, 0])
 ]
+$$
 
 Because:
 
+$$
 [
 softmax(z) = softmax(z - c)
 ]
+$$
 
 for any constant ( c ).
 
@@ -177,9 +188,11 @@ Softmax uses exponentials.
 
 Large logits cause overflow:
 
+$$
 [
 e^{1000} \rightarrow \infty
 ]
+$$
 
 Which leads to:
 
@@ -251,9 +264,11 @@ Because `F.cross_entropy()`:
 
 Internally it computes:
 
+$$
 [
-\text{log_softmax}(logits)
+log\_softmax(logits)
 ]
+$$
 
 then extracts the log-probability of the correct class.
 
@@ -262,32 +277,39 @@ then extracts the log-probability of the correct class.
 # 8. What Is Cross Entropy Doing?
 
 Cross entropy computes:
-
+$$
 [
 Loss = -\log(P_{correct})
 ]
+$$
 
 If model is confident and correct:
 
+$$
 [
 P_{correct} \approx 1
 ]
+$$
 
 Loss ≈ 0
 
 If model is uncertain:
 
+$$
 [
 P_{correct} \approx 0.33
 ]
+$$
 
 Loss is higher.
 
 If model is confidently wrong:
 
+$$
 [
 P_{correct} \approx 0
 ]
+$$
 
 Loss is very large.
 

@@ -3,12 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from tokenizer import vocab_size, decode
-from tokenizer import train_data, val_data
-
-batch_size = 32
-sequence_length = 8
-learning_rate = 1e-2
-max_iters = 2000
+from tokenizer import train_data, val_data, get_batch
 
 
 class NeuralBigramModel(nn.Module):
@@ -29,18 +24,46 @@ class NeuralBigramModel(nn.Module):
         # reshape for cross entropy
         logits = logits.view(B * T, C)
         targets = targets.view(B * T)
-
         loss = F.cross_entropy(logits, targets)
 
         return logits, loss
 
-    def get_batch(split):
-        data_source = train_data if split == "train" else val_data
-        ix = torch.randint(len(data_source) - sequence_length, (batch_size,))
-        x = torch.stack([data_source[i : i + sequence_length] for i in ix])
-        y = torch.stack([data_source[i + 1 : i + sequence_length + 1] for i in ix])
-        return x, y
+    def generate(self, idx, max_new_tokens):
+        for _ in range(max_new_tokens):
+            logits, _ = self(idx)
+
+            # focus only on last time step
+            logits = logits[:, -1, :]  # (B, C)
+
+            probs = F.softmax(logits, dim=-1)  # (B, C)
+
+            idx_next = torch.multinomial(probs, num_samples=1)  # sample
+
+            idx = torch.cat((idx, idx_next), dim=1)
+
+        return idx
 
 
 model = NeuralBigramModel(vocab_size)
-optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+batch_size = 32
+sequence_length = 8
+learning_rate = 1e-2
+max_iters = 2000
+
+# training loop
+for step in range(2000):
+    xb, yb = get_batch("train")
+    logits, loss = model(xb, yb)
+    optimizer.zero_grad()  # clear old gradients
+    loss.backward()  # compute gradients
+    optimizer.step()  # update weights
+    if step % 200 == 0:
+        print(f"step {step}, loss {loss.item():.4f}")
+
+
+context = torch.zeros((1, 1), dtype=torch.long)
+
+generated = model.generate(context, max_new_tokens=200)
+
+print(decode(generated[0].tolist()))
