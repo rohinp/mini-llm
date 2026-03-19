@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neural Bigram Model Visualizer</title>
+    <style>
+        :root {
+            --bg: #08111f;
+            --panel: #0f172a;
+            --panel-2: #111827;
+            --panel-3: #1e293b;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --accent: #60a5fa;
+            --accent-2: #34d399;
+            --accent-3: #f59e0b;
+            --accent-4: #f472b6;
+            --danger: #f87171;
+            --border: #334155;
+            --shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            background: radial-gradient(circle at top, #0b1d38 0%, #08111f 45%, #050a13 100%);
+            color: var(--text);
+            line-height: 1.45;
+        }
+
+        .container {
+            max-width: 1380px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .hero,
+        .panel {
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
+        }
+
+        .hero {
+            padding: 24px;
+            margin-bottom: 18px;
+        }
+
+        .panel {
+            padding: 18px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            margin: 0 0 10px;
+        }
+
+        p {
+            margin-top: 0;
+            color: var(--muted);
+        }
+
+        textarea,
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            background: #020617;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 14px;
+            font: inherit;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #cbd5e1;
+        }
+
+        .controls,
+        .small-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        button {
+            border: 1px solid var(--border);
+            background: var(--panel-3);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        button.primary {
+            background: var(--accent);
+            color: #082f49;
+            border-color: transparent;
+        }
+
+        button.success {
+            background: var(--accent-2);
+            color: #052e16;
+            border-color: transparent;
+        }
+
+        button.warn {
+            background: var(--accent-3);
+            color: #451a03;
+            border-color: transparent;
+        }
+
+        button.pink {
+            background: var(--accent-4);
+            color: #500724;
+            border-color: transparent;
+        }
+
+        button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .grid-main {
+            display: grid;
+            grid-template-columns: 1.35fr 0.95fr;
+            gap: 18px;
+            align-items: start;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .step-strip {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .step-card {
+            background: #0b1220;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 12px;
+            min-height: 110px;
+        }
+
+        .step-card.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px rgba(96, 165, 250, .35) inset;
+        }
+
+        .step-card.done {
+            border-color: rgba(52, 211, 153, 0.6);
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 12px;
+            border-radius: 999px;
+            background: #172554;
+            color: #bfdbfe;
+            padding: 3px 8px;
+            margin-bottom: 8px;
+        }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .good {
+            color: var(--accent-2);
+        }
+
+        .bad {
+            color: var(--danger);
+        }
+
+        .accent {
+            color: var(--accent);
+        }
+
+        .table-wrap {
+            overflow: auto;
+            max-height: 520px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: #020617;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 520px;
+        }
+
+        th,
+        td {
+            border: 1px solid #1e293b;
+            padding: 8px 10px;
+            text-align: center;
+            white-space: nowrap;
+            font-size: 14px;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: #0b1220;
+            z-index: 2;
+        }
+
+        td.rowhdr {
+            position: sticky;
+            left: 0;
+            background: #0b1220;
+            font-weight: 700;
+            z-index: 1;
+        }
+
+        .vocab-list,
+        .tensor-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chip {
+            background: #111827;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 13px;
+            color: #dbeafe;
+        }
+
+        .box {
+            background: #0b1220;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px;
+        }
+
+        .pipeline {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: stretch;
+        }
+
+        .pipeline-step {
+            flex: 1 1 120px;
+            min-width: 120px;
+            background: #0b1220;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .pipeline-step.highlight {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px rgba(96, 165, 250, .35) inset;
+        }
+
+        .arrow {
+            font-size: 22px;
+            align-self: center;
+            color: #64748b;
+        }
+
+        .token-stream {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .token-card {
+            min-width: 86px;
+            text-align: center;
+            padding: 10px;
+            background: #020617;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+        }
+
+        .big-number {
+            font-size: 30px;
+            font-weight: 800;
+            margin-top: 4px;
+        }
+
+        .log-box {
+            max-height: 260px;
+            overflow: auto;
+            background: #020617;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px;
+        }
+
+        .log-item {
+            padding: 8px 0;
+            border-bottom: 1px dashed #1e293b;
+            font-size: 14px;
+        }
+
+        .log-item:last-child {
+            border-bottom: none;
+        }
+
+        .output {
+            min-height: 88px;
+            background: #020617;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px;
+            font-size: 16px;
+        }
+
+        .bar-row {
+            display: grid;
+            grid-template-columns: 90px 1fr 70px;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .bar {
+            height: 16px;
+            border-radius: 999px;
+            background: #172033;
+            overflow: hidden;
+            border: 1px solid #22314d;
+        }
+
+        .bar>span {
+            display: block;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(96, 165, 250, .85), rgba(52, 211, 153, .85));
+        }
+
+        .note {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 8px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 10px;
+        }
+
+        .heat {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 1px solid #334155;
+        }
+
+        @media (max-width: 1100px) {
+
+            .grid-main,
+            .grid-2,
+            .grid-3,
+            .step-strip {
+                grid-template-columns: 1fr;
+            }
+
+            .pipeline {
+                flex-direction: column;
+            }
+
+            .arrow {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <section class="hero">
+            <h1>Neural Bigram Model Visualizer</h1>
+            <p>
+                This shows the neural version of a bigram model. Instead of storing counts directly, we learn a
+                <span class="mono">vocab × vocab</span> weight table. Each row is an embedding for one token, and that
+                row directly becomes the logits for the next token.
+            </p>
+
+            <div class="grid-2">
+                <div>
+                    <label for="corpus">Training corpus</label>
+                    <textarea id="corpus">the cat sat on the mat
+the cat ate the fish
+the fish swam away
+the cat saw the fish
+the mat was warm</textarea>
+                </div>
+                <div>
+                    <div class="grid-2">
+                        <div>
+                            <label for="lr">Learning rate</label>
+                            <input id="lr" type="number" value="0.8" step="0.05" min="0.01" max="3" />
+                        </div>
+                        <div>
+                            <label for="seed">Random seed</label>
+                            <input id="seed" type="number" value="7" step="1" min="1" max="999" />
+                        </div>
+                        <div>
+                            <label for="inferToken">Inference start token</label>
+                            <input id="inferToken" type="text" value="the" />
+                        </div>
+                        <div>
+                            <label for="genLength">Generate tokens</label>
+                            <input id="genLength" type="number" value="10" min="1" max="40" />
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="primary" id="initBtn">Initialize Model</button>
+                        <button id="oneStepBtn">Train One Step</button>
+                        <button class="warn" id="tenStepBtn">Train 10 Steps</button>
+                        <button class="success" id="runInferenceBtn">Run Inference</button>
+                        <button class="pink" id="resetWeightsBtn">Re-randomize Weights</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-strip" id="stepStrip"></div>
+        </section>
+
+        <div class="grid-main">
+            <div>
+                <section class="panel" style="margin-bottom:18px;">
+                    <h2>Training Pipeline</h2>
+                    <p id="stageDescription">Initialize the model to see the random neural bigram weights.</p>
+                    <div class="pipeline" id="pipelineViz"></div>
+                </section>
+
+                <section class="panel" style="margin-bottom:18px;">
+                    <h2 id="matrixTitle">Weight Matrix / Embedding Table</h2>
+                    <p>
+                        In a neural bigram model, the row for the current token is selected from this table.
+                        That selected row is the <span class="mono">logits</span> for the next token.
+                    </p>
+                    <div id="matrixView"></div>
+                    <div class="legend" id="matrixLegend"></div>
+                </section>
+
+                <section class="panel">
+                    <h2>Single Training Example Walkthrough</h2>
+                    <p>We show one example pair from the corpus at the current step: <span class="mono">input token →
+                            target token</span>.</p>
+                    <div class="token-stream" id="exampleStream"></div>
+                    <div class="grid-3" style="margin-top:14px;">
+                        <div class="box">
+                            <div class="muted">Selected row = logits</div>
+                            <div id="logitsBars"></div>
+                        </div>
+                        <div class="box">
+                            <div class="muted">Softmax probabilities</div>
+                            <div id="probBars"></div>
+                        </div>
+                        <div class="box">
+                            <div class="muted">Loss and target</div>
+                            <div id="lossBox"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div>
+                <section class="panel" style="margin-bottom:18px;">
+                    <h2>Data and Vocabulary</h2>
+                    <div class="box" style="margin-bottom:12px;">
+                        <div class="muted">Vocabulary</div>
+                        <div class="vocab-list" id="vocabView"></div>
+                    </div>
+                    <div class="box">
+                        <div class="muted">Training pairs</div>
+                        <div class="log-box" id="pairsView"></div>
+                    </div>
+                </section>
+
+                <section class="panel" style="margin-bottom:18px;">
+                    <h2>Training State</h2>
+                    <div class="grid-2">
+                        <div class="box">
+                            <div class="muted">Step</div>
+                            <div class="big-number" id="stepCount">0</div>
+                        </div>
+                        <div class="box">
+                            <div class="muted">Current loss</div>
+                            <div class="big-number" id="lossValue">-</div>
+                        </div>
+                    </div>
+                    <div class="box" style="margin-top:12px;">
+                        <div class="muted">What is happening</div>
+                        <div id="coachText" style="margin-top:8px;"></div>
+                    </div>
+                    <div class="box" style="margin-top:12px;">
+                        <div class="muted">Update summary</div>
+                        <div id="updateSummary" style="margin-top:8px;"></div>
+                    </div>
+                </section>
+
+                <section class="panel" style="margin-bottom:18px;">
+                    <h2>Backward Pass Intuition</h2>
+                    <div class="box">
+                        <div class="muted">Gradient view</div>
+                        <div id="gradInfo" style="margin-top:8px;"></div>
+                        <div class="note">
+                            Negative gradient means "push this logit up" after subtracting gradients. Positive gradient
+                            means "push this logit down."
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h2>Inference</h2>
+                    <p>
+                        At inference time there is no target and no loss. We only do:
+                        <span class="mono">token → logits → softmax → sample next token</span>.
+                    </p>
+                    <div class="output" id="inferenceOutput">Initialize the model, train a few steps, then run
+                        inference.</div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            tokens: [],
+            vocab: [],
+            stoi: {},
+            itos: {},
+            x: [],
+            y: [],
+            W: [],
+            lastForward: null,
+            step: 0,
+            lr: 0.8,
+            currentPairIndex: 0,
+            rng: null,
+            currentStage: 0,
+            gradRow: null,
+        };
+
+        const stages = [
+            { title: '0. Data prep', desc: 'Build vocabulary and (input, target) bigram pairs from the corpus.' },
+            { title: '1. Random weights', desc: 'Initialize W with small random values. Nothing is learned yet.' },
+            { title: '2. Forward pass', desc: 'Pick one input token, select its row from W, and treat that row as logits.' },
+            { title: '3. Softmax + loss', desc: 'Convert logits to probabilities. Use cross-entropy loss with the correct target token.' },
+            { title: '4. Backward pass', desc: 'Compute gradients. The target token should go up, incorrect tokens should go down.' },
+            { title: '5. Optimizer step', desc: 'Update the weight row using gradient descent.' },
+            { title: '6. Repeat training', desc: 'Do many updates so the model starts assigning better probabilities.' },
+            { title: '7. Inference', desc: 'Use learned logits and probabilities to sample new tokens.' },
+        ];
+
+        function mulberry32(a) {
+            return function () {
+                let t = a += 0x6D2B79F5;
+                t = Math.imul(t ^ t >>> 15, t | 1);
+                t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            }
+        }
+
+        function tokenize(text) {
+            return text.toLowerCase().replace(/[^a-z0-9\s]+/g, ' ').split(/\s+/).filter(Boolean);
+        }
+
+        function softmax(arr) {
+            const maxVal = Math.max(...arr);
+            const exps = arr.map(v => Math.exp(v - maxVal));
+            const sum = exps.reduce((a, b) => a + b, 0);
+            return exps.map(v => v / sum);
+        }
+
+        function argSortDesc(arr) {
+            return arr.map((v, i) => [i, v]).sort((a, b) => b[1] - a[1]);
+        }
+
+        function sample(probs) {
+            let r = state.rng();
+            let cum = 0;
+            for (let i = 0; i < probs.length; i++) {
+                cum += probs[i];
+                if (r <= cum) return i;
+            }
+            return probs.length - 1;
+        }
+
+        function buildData() {
+            state.tokens = tokenize(document.getElementById('corpus').value);
+            state.vocab = [...new Set(state.tokens)];
+            state.stoi = Object.fromEntries(state.vocab.map((t, i) => [t, i]));
+            state.itos = Object.fromEntries(state.vocab.map((t, i) => [i, t]));
+            state.x = [];
+            state.y = [];
+            for (let i = 0; i < state.tokens.length - 1; i++) {
+                state.x.push(state.stoi[state.tokens[i]]);
+                state.y.push(state.stoi[state.tokens[i + 1]]);
+            }
+        }
+
+        function initWeights() {
+            state.lr = Number(document.getElementById('lr').value) || 0.8;
+            const seed = Number(document.getElementById('seed').value) || 7;
+            state.rng = mulberry32(seed);
+            buildData();
+            const V = state.vocab.length;
+            state.W = Array.from({ length: V }, () => Array.from({ length: V }, () => (state.rng() * 2 - 1) * 0.8));
+            state.lastForward = null;
+            state.step = 0;
+            state.currentPairIndex = 0;
+            state.currentStage = 1;
+            state.gradRow = null;
+            const firstTok = state.vocab[0] || '';
+            document.getElementById('inferToken').value = firstTok;
+            renderAll();
+        }
+
+        function currentExample() {
+            if (!state.x.length) return null;
+            const idx = state.currentPairIndex % state.x.length;
+            return {
+                pairIndex: idx,
+                xIdx: state.x[idx],
+                yIdx: state.y[idx],
+                xTok: state.itos[state.x[idx]],
+                yTok: state.itos[state.y[idx]],
+            };
+        }
+
+        function forwardForExample(ex) {
+            const logits = [...state.W[ex.xIdx]];
+            const probs = softmax(logits);
+            const loss = -Math.log(Math.max(probs[ex.yIdx], 1e-12));
+            return { logits, probs, loss };
+        }
+
+        function trainOneStep() {
+            if (!state.W.length) initWeights();
+            const ex = currentExample();
+            if (!ex) return;
+
+            state.currentStage = 2;
+            const logits = [...state.W[ex.xIdx]];
+            state.currentStage = 3;
+            const probs = softmax(logits);
+            const loss = -Math.log(Math.max(probs[ex.yIdx], 1e-12));
+
+            state.currentStage = 4;
+            const grad = [...probs];
+            grad[ex.yIdx] -= 1;
+            state.gradRow = grad;
+
+            state.currentStage = 5;
+            for (let j = 0; j < state.W[ex.xIdx].length; j++) {
+                state.W[ex.xIdx][j] -= state.lr * grad[j];
+            }
+
+            state.lastForward = { ...ex, logits, probs, loss, grad };
+            state.step += 1;
+            state.currentPairIndex = (state.currentPairIndex + 1) % state.x.length;
+            state.currentStage = 6;
+            renderAll();
+        }
+
+        function trainMany(n) {
+            for (let i = 0; i < n; i++) trainOneStep();
+        }
+
+        function runInference() {
+            if (!state.W.length) initWeights();
+            const start = document.getElementById('inferToken').value.trim().toLowerCase();
+            const len = Math.max(1, Math.min(40, Number(document.getElementById('genLength').value) || 10));
+            if (!(start in state.stoi)) {
+                document.getElementById('inferenceOutput').innerHTML = '<span class="bad">Start token not in vocabulary.</span>';
+                return;
+            }
+
+            state.currentStage = 7;
+            const out = [start];
+            const trace = [];
+            let cur = start;
+            for (let i = 0; i < len - 1; i++) {
+                const idx = state.stoi[cur];
+                const logits = [...state.W[idx]];
+                const probs = softmax(logits);
+                const nextIdx = sample(probs);
+                const nextTok = state.itos[nextIdx];
+                const top = argSortDesc(probs).slice(0, 3).map(([j, p]) => `${state.itos[j]}=${p.toFixed(2)}`).join(', ');
+                trace.push(`<div class="log-item mono"><strong>${cur}</strong> → logits → softmax → sampled <strong>${nextTok}</strong><br><span class="muted">top probs: ${top}</span></div>`);
+                out.push(nextTok);
+                cur = nextTok;
+            }
+            document.getElementById('inferenceOutput').innerHTML = `<div style="margin-bottom:10px;"><strong>Generated:</strong> ${out.join(' ')}</div><div class="log-box">${trace.join('')}</div>`;
+            renderAll();
+        }
+
+        function heatForValue(v, mode = 'weight') {
+            if (mode === 'weight') {
+                const a = Math.min(1, Math.abs(v) / 2.2);
+                return v >= 0 ? `rgba(52, 211, 153, ${a})` : `rgba(248, 113, 113, ${a})`;
+            }
+            const a = Math.max(0.06, Math.min(1, v));
+            return `rgba(96, 165, 250, ${a})`;
+        }
+
+        function renderStepStrip() {
+            const wrap = document.getElementById('stepStrip');
+            wrap.innerHTML = '';
+            stages.forEach((s, i) => {
+                let cls = 'step-card';
+                if (state.currentStage === i) cls += ' active';
+                if (state.currentStage > i) cls += ' done';
+                const d = document.createElement('div');
+                d.className = cls;
+                d.innerHTML = `<div class="badge">${i}</div><div><strong>${s.title}</strong></div><div class="muted" style="font-size:12px;margin-top:6px;">${s.desc}</div>`;
+                wrap.appendChild(d);
+            });
+        }
+
+        function renderPipeline() {
+            const stagesSmall = [
+                ['Input token', 'Pick one token id'],
+                ['Embedding lookup', 'Select one row from W'],
+                ['Logits', 'Raw scores for next token'],
+                ['Softmax', 'Turn scores into probabilities'],
+                ['Cross-entropy', 'Compare with correct target'],
+                ['Gradients', 'Find how to change weights'],
+                ['Update W', 'Gradient descent step'],
+                ['Inference', 'Sample output token'],
+            ];
+            const wrap = document.getElementById('pipelineViz');
+            wrap.innerHTML = stagesSmall.map((s, i) => {
+                const hi = i === state.currentStage ? 'highlight' : '';
+                return `<div class="pipeline-step ${hi}"><strong>${s[0]}</strong><div class="muted" style="font-size:12px;margin-top:6px;">${s[1]}</div></div>${i < stagesSmall.length - 1 ? '<div class="arrow">→</div>' : ''}`;
+            }).join('');
+
+            document.getElementById('stageDescription').textContent = stages[state.currentStage]?.desc || 'Initialize the model.';
+        }
+
+        function renderMatrix() {
+            const title = document.getElementById('matrixTitle');
+            title.textContent = state.currentStage >= 7 ? 'Learned Weight Matrix (used for inference)' : 'Weight Matrix / Embedding Table';
+            const view = document.getElementById('matrixView');
+            const legend = document.getElementById('matrixLegend');
+
+            if (!state.W.length) {
+                view.innerHTML = '<p class="muted">Initialize the model first.</p>';
+                legend.innerHTML = '';
+                return;
+            }
+
+            let html = '<div class="table-wrap"><table><thead><tr><th>input ↓ / next-token logit →</th>';
+            for (const tok of state.vocab) html += `<th class="mono">${tok}</th>`;
+            html += '</tr></thead><tbody>';
+            state.W.forEach((row, i) => {
+                html += `<tr><td class="rowhdr mono">${state.vocab[i]}</td>`;
+                row.forEach(v => {
+                    html += `<td class="mono" style="background:${heatForValue(v, 'weight')}">${v.toFixed(2)}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            view.innerHTML = html;
+            legend.innerHTML = `
+        <span class="heat" style="background:rgba(52, 211, 153, .7)"></span><span>positive weight / logit</span>
+        <span class="heat" style="background:rgba(248, 113, 113, .7)"></span><span>negative weight / logit</span>
+      `;
+        }
+
+        function renderVocabAndPairs() {
+            document.getElementById('vocabView').innerHTML = state.vocab.length
+                ? state.vocab.map((t, i) => `<span class="chip mono">${i}: ${t}</span>`).join('')
+                : '<span class="muted">No vocab yet.</span>';
+
+            document.getElementById('pairsView').innerHTML = state.x.length
+                ? state.x.map((x, i) => {
+                    const active = i === (state.currentPairIndex % state.x.length) ? ' style="color:#93c5fd;"' : '';
+                    return `<div class="log-item mono"${active}>${i}. (${state.itos[x]} → ${state.itos[state.y[i]]})</div>`;
+                }).join('')
+                : '<span class="muted">No pairs yet.</span>';
+        }
+
+        function renderExample() {
+            const ex = state.lastForward || currentExample();
+            if (!ex) {
+                document.getElementById('exampleStream').innerHTML = '<span class="muted">No example available.</span>';
+                document.getElementById('logitsBars').innerHTML = '';
+                document.getElementById('probBars').innerHTML = '';
+                document.getElementById('lossBox').innerHTML = '<span class="muted">Train one step to inspect loss.</span>';
+                return;
+            }
+
+            const logits = ex.logits || forwardForExample(ex).logits;
+            const probs = ex.probs || forwardForExample(ex).probs;
+            const loss = ex.loss ?? forwardForExample(ex).loss;
+
+            document.getElementById('exampleStream').innerHTML = `
+        <div class="token-card"><div class="muted">input token</div><div class="mono" style="font-weight:800;">${ex.xTok}</div></div>
+        <div class="arrow">→</div>
+        <div class="token-card"><div class="muted">lookup row</div><div class="mono">W[${ex.xTok}]</div></div>
+        <div class="arrow">→</div>
+        <div class="token-card"><div class="muted">target token</div><div class="mono" style="font-weight:800;">${ex.yTok}</div></div>
+      `;
+
+            const topLogits = argSortDesc(logits).slice(0, 6).map(([i, v]) => `
+        <div class="bar-row"><div class="mono">${state.itos[i]}</div><div class="bar"><span style="width:${Math.min(100, Math.abs(v) / 2.5 * 100)}%; background:${v >= 0 ? 'linear-gradient(90deg, rgba(52,211,153,.85), rgba(96,165,250,.85))' : 'linear-gradient(90deg, rgba(248,113,113,.85), rgba(244,114,182,.85))'}"></span></div><div class="mono">${v.toFixed(2)}</div></div>
+      `).join('');
+            document.getElementById('logitsBars').innerHTML = topLogits;
+
+            const topProbs = argSortDesc(probs).slice(0, 6).map(([i, v]) => `
+        <div class="bar-row"><div class="mono">${state.itos[i]}</div><div class="bar"><span style="width:${v * 100}%"></span></div><div class="mono">${v.toFixed(3)}</div></div>
+      `).join('');
+            document.getElementById('probBars').innerHTML = topProbs;
+
+            document.getElementById('lossBox').innerHTML = `
+        <div><span class="muted">target:</span> <span class="mono">${ex.yTok}</span></div>
+        <div style="margin-top:8px;"><span class="muted">target probability:</span> <span class="mono">${probs[ex.yIdx].toFixed(4)}</span></div>
+        <div style="margin-top:8px;"><span class="muted">cross-entropy loss:</span> <span class="mono">${loss.toFixed(4)}</span></div>
+        <div class="note">Low target probability means high loss. Training tries to increase the target token's probability.</div>
+      `;
+        }
+
+        function renderTrainingState() {
+            document.getElementById('stepCount').textContent = String(state.step);
+            document.getElementById('lossValue').textContent = state.lastForward ? state.lastForward.loss.toFixed(3) : '-';
+
+            const coach = document.getElementById('coachText');
+            if (!state.W.length) {
+                coach.innerHTML = 'You have not initialized the neural bigram model yet.';
+                document.getElementById('updateSummary').innerHTML = 'No updates yet.';
+                return;
+            }
+
+            let text = '';
+            if (state.step === 0) {
+                text = 'Right now the weights are random. That means each token maps to random logits, so predictions are mostly nonsense.';
+            } else {
+                const ex = state.lastForward;
+                const top = argSortDesc(ex.probs)[0];
+                text = `For the latest example <span class="mono">(${ex.xTok} → ${ex.yTok})</span>, the model produced logits, converted them to probabilities, measured the error with cross-entropy, computed gradients, and updated only the row for input token <span class="mono">${ex.xTok}</span>. Current top prediction was <span class="mono">${state.itos[top[0]]}</span> with probability <span class="mono">${top[1].toFixed(3)}</span>.`;
+            }
+            coach.innerHTML = text;
+
+            if (state.lastForward) {
+                const ex = state.lastForward;
+                const grad = ex.grad;
+                const sortedAbs = grad.map((g, i) => [i, Math.abs(g), g]).sort((a, b) => b[1] - a[1]).slice(0, 4);
+                document.getElementById('updateSummary').innerHTML = sortedAbs.map(([i, mag, g]) => `
+          <div class="log-item mono">token <strong>${state.itos[i]}</strong>: gradient ${g.toFixed(4)} → weight update ${(-state.lr * g).toFixed(4)}</div>
+        `).join('');
+            } else {
+                document.getElementById('updateSummary').innerHTML = 'No updates yet.';
+            }
+        }
+
+        function renderGradients() {
+            const el = document.getElementById('gradInfo');
+            if (!state.lastForward) {
+                el.innerHTML = 'After one training step, gradient details will appear here.';
+                return;
+            }
+            const ex = state.lastForward;
+            const grads = ex.grad.map((g, i) => [i, g]).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 6);
+            el.innerHTML = grads.map(([i, g]) => {
+                const direction = g < 0 ? 'increase this logit' : 'decrease this logit';
+                const color = g < 0 ? 'good' : 'bad';
+                return `<div class="bar-row"><div class="mono">${state.itos[i]}</div><div class="bar"><span style="width:${Math.min(100, Math.abs(g) * 100)}%; background:${g < 0 ? 'linear-gradient(90deg, rgba(52,211,153,.9), rgba(96,165,250,.9))' : 'linear-gradient(90deg, rgba(248,113,113,.9), rgba(244,114,182,.9))'}"></span></div><div class="mono ${color}">${g.toFixed(3)}</div></div><div class="note" style="margin-bottom:8px;">${direction}</div>`;
+            }).join('');
+        }
+
+        function renderAll() {
+            renderStepStrip();
+            renderPipeline();
+            renderMatrix();
+            renderVocabAndPairs();
+            renderExample();
+            renderTrainingState();
+            renderGradients();
+        }
+
+        document.getElementById('initBtn').addEventListener('click', initWeights);
+        document.getElementById('oneStepBtn').addEventListener('click', trainOneStep);
+        document.getElementById('tenStepBtn').addEventListener('click', () => trainMany(10));
+        document.getElementById('runInferenceBtn').addEventListener('click', runInference);
+        document.getElementById('resetWeightsBtn').addEventListener('click', initWeights);
+
+        initWeights();
+    </script>
+</body>
+
+</html>
