@@ -206,6 +206,20 @@ one_hot @ W
 
 ---
 
+## 🔹 One-Hot Vectors vs Embeddings
+
+*A one-hot vector* is a long vector full of zeros except for a single 1 at the position of the token. If the vocabulary has 65 tokens, each one-hot vector is length 65.
+
+*The embedding layer* stores all of those one-hot → weight translations implicitly. When you call `nn.Embedding`, PyTorch takes the token ID, jumps directly to the matching row, and skips creating the sparse one-hot vector entirely.
+
+Why this matters:
+
+- No gigantic sparse vectors in memory.
+- Updating a single row during training is trivial.
+- The math matches “one_hot @ W”, but the code stays fast and simple.
+
+---
+
 ## 🔹 Logits
 
 Raw scores (not probabilities):
@@ -280,6 +294,14 @@ Targets:
 (B*T)
 ```
 
+Plain-English version:
+
+- `B` (batch size): how many independent snippets we process in parallel (e.g., 32).
+- `T` (time steps / sequence length): how many characters are in each snippet (e.g., 8).
+- `C` (channels / vocab size): how many possible tokens we predict (equal to vocabulary length).
+
+During training we predict `B × T` next tokens at once. PyTorch’s `cross_entropy` expects shape `(N, C)` for logits, so we flatten `(B, T, C)` → `(B*T, C)` and flatten the targets to match. Think of it as stacking every position across the batch into one big classification table.
+
 ---
 
 # 11. Training Loop (Backward Pass)
@@ -321,6 +343,12 @@ def estimate_loss():
     model.train()
     return out
 ```
+
+### Why bother with `@torch.no_grad()`?
+
+- **Without it:** PyTorch tracks gradients for every tensor operation, even during evaluation. That wastes memory and slows things down.
+- **With it:** Autograd tracking is disabled inside the decorated function (or context manager), so inference/validation runs cheaper and cannot accidentally call `loss.backward()`.
+- **When to use it:** whenever you are just *measuring* or *sampling* (validation loops, text generation). Training steps still run outside this context so gradients get recorded normally.
 
 ---
 
@@ -379,15 +407,72 @@ Remember to call `model.eval()` before sampling so any layers such as dropout sw
 
 # 14. Temperature (Sampling Control)
 
-```
-logits / temperature
+During generation we can scale logits before softmax:
+
+```python
+probs = F.softmax(logits / temperature, dim=-1)
 ```
 
-| Temp | Behavior      |
-| ---- | ------------- |
-| low  | deterministic |
-| 1.0  | balanced      |
-| high | random        |
+Think of temperature as a *confidence dial*:
+
+- Low temperature → sharp, deterministic distributions.
+- High temperature → flat, exploratory distributions.
+
+### Case 1 — Low temperature (e.g., 0.5)
+
+```
+logits / 0.5  ⇒  values double
+```
+
+Example:
+
+```
+original logits : [2.0, 1.0, 0.1]
+after /0.5      : [4.0, 2.0, 0.2]
+softmax probs   : [0.85, 0.13, 0.02]
+```
+
+The largest value dominates, so the model becomes confident and repetitive—almost like always taking `argmax`.
+
+### Case 2 — High temperature (e.g., 2.0)
+
+```
+logits / 2.0  ⇒  values shrink
+```
+
+Example:
+
+```
+[2.0, 1.0, 0.1] / 2 → [1.0, 0.5, 0.05]
+softmax probs       → [0.50, 0.30, 0.20]
+```
+
+Probabilities spread out, so the model samples more diverse (and sometimes nonsensical) continuations.
+
+### Quick reference
+
+| Temperature | Behavior                    |
+| ----------- | --------------------------- |
+| 0.1         | almost argmax (very strict) |
+| 0.5         | confident                   |
+| 1.0         | baseline / neutral          |
+| 2.0         | exploratory                 |
+| ≫ 2         | nearly random               |
+
+### Why it works
+
+Softmax uses exponentials: `exp(logit)`. Larger logits explode the exponent, so one option dominates; smaller logits keep the exponentials close, so the distribution flattens. Temperature simply rescales logits before those exponentials are applied.
+
+### Tie-in to the bigram model
+
+Our neural bigram’s forward pass yields `logits = W[token_id]`. Right before sampling we can control creativity:
+
+```python
+logits = logits / temperature
+probs = F.softmax(logits, dim=-1)
+```
+
+This lets you demo the same trained weights under both “serious” (low temp) and “fun” (high temp) settings without retraining.
 
 ---
 

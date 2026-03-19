@@ -202,6 +202,17 @@
             color: var(--muted);
         }
 
+        .tab-btn {
+            background: #0b1220;
+            border-color: #1e293b;
+        }
+
+        .tab-btn.active {
+            background: var(--accent);
+            color: #082f49;
+            border-color: transparent;
+        }
+
         .good {
             color: var(--accent-2);
         }
@@ -400,6 +411,75 @@
             border: 1px solid #334155;
         }
 
+        .storyboard {
+            margin-top: 12px;
+        }
+
+        .story-card {
+            background: #020617;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 16px;
+            min-height: 140px;
+        }
+
+        .story-card h3 {
+            margin: 4px 0 6px;
+        }
+
+        .story-progress {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            border-radius: 999px;
+            background: #1e293b;
+            overflow: hidden;
+        }
+
+        .progress-bar span {
+            display: block;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(96, 165, 250, .9), rgba(52, 211, 153, .9));
+        }
+
+        .story-dots {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .story-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            background: #0f172a;
+        }
+
+        .story-dot.active {
+            background: var(--accent);
+            border-color: transparent;
+        }
+
+        .story-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .story-actions button {
+            flex: 1 1 120px;
+        }
+
         @media (max-width: 1100px) {
 
             .grid-main,
@@ -509,6 +589,21 @@ the mat was warm</textarea>
                         </div>
                     </div>
                 </section>
+
+                <section class="panel" style="margin-top:18px;">
+                    <h2>Forward &amp; Backward Explorer</h2>
+                    <p>Step through each stage to tell the story of one training update without touching the code.</p>
+                    <div class="small-controls">
+                        <button class="tab-btn active" id="forwardModeBtn">Forward pass</button>
+                        <button class="tab-btn" id="backwardModeBtn">Backward pass</button>
+                    </div>
+                    <div class="story-actions">
+                        <button id="storyPrevBtn">◀ Previous</button>
+                        <button id="storyNextBtn">Next ▶</button>
+                        <button class="primary" id="storyPlayBtn">Play stages</button>
+                    </div>
+                    <div class="storyboard" id="storyboard"></div>
+                </section>
             </div>
 
             <div>
@@ -587,6 +682,10 @@ the mat was warm</textarea>
             rng: null,
             currentStage: 0,
             gradRow: null,
+            highlightStage: null,
+            storyMode: 'forward',
+            storyIndex: 0,
+            storyTimer: null,
         };
 
         const stages = [
@@ -598,6 +697,22 @@ the mat was warm</textarea>
             { title: '5. Optimizer step', desc: 'Update the weight row using gradient descent.' },
             { title: '6. Repeat training', desc: 'Do many updates so the model starts assigning better probabilities.' },
             { title: '7. Inference', desc: 'Use learned logits and probabilities to sample new tokens.' },
+        ];
+
+        const forwardStoryboard = [
+            { title: 'Select input token', stageIndex: 2, desc: 'Take one bigram pair from the dataset to create (input → target).', detail: describeInputToken },
+            { title: 'Lookup embedding row', stageIndex: 2, desc: 'Use the input token id to grab one row from W.', detail: describeEmbeddingLookup },
+            { title: 'Raw logits', stageIndex: 2, desc: 'Each value tells how much we currently favor a next token before normalization.', detail: describeLogitsView },
+            { title: 'Softmax probabilities', stageIndex: 3, desc: 'Softmax converts logits into probabilities that sum to 1.', detail: describeSoftmaxView },
+            { title: 'Cross-entropy loss', stageIndex: 3, desc: 'Loss only checks the probability assigned to the true target token.', detail: describeLossView },
+        ];
+
+        const backwardStoryboard = [
+            { title: 'Gradient signal', stageIndex: 4, desc: 'Subtract 1.0 from the target probability to get the gradient direction.', detail: describeGradientSignal },
+            { title: 'Interpret gradients', stageIndex: 4, desc: 'Negative gradient means “increase this logit”; positive means “decrease it.”', detail: describeGradientInterpret },
+            { title: 'Weight update', stageIndex: 5, desc: 'Apply the learning rate times the gradient to adjust the selected row.', detail: describeWeightUpdate },
+            { title: 'Move to next pair', stageIndex: 6, desc: 'After updating, advance to the next (input, target) pair and repeat.', detail: describeNextPair },
+            { title: 'Ready for inference', stageIndex: 7, desc: 'After many passes the table encodes transitions we can sample from.', detail: describeInferenceReady },
         ];
 
         function mulberry32(a) {
@@ -648,6 +763,7 @@ the mat was warm</textarea>
         }
 
         function initWeights() {
+            stopStoryboardAuto();
             state.lr = Number(document.getElementById('lr').value) || 0.8;
             const seed = Number(document.getElementById('seed').value) || 7;
             state.rng = mulberry32(seed);
@@ -659,6 +775,9 @@ the mat was warm</textarea>
             state.currentPairIndex = 0;
             state.currentStage = 1;
             state.gradRow = null;
+            state.highlightStage = null;
+            state.storyMode = 'forward';
+            state.storyIndex = 0;
             const firstTok = state.vocab[0] || '';
             document.getElementById('inferToken').value = firstTok;
             renderAll();
@@ -683,7 +802,86 @@ the mat was warm</textarea>
             return { logits, probs, loss };
         }
 
+        function snapshotExample() {
+            const base = state.lastForward || currentExample();
+            if (!base) return null;
+            if (base.logits && base.probs && typeof base.loss === 'number') return base;
+            const fwd = forwardForExample(base);
+            return { ...base, ...fwd };
+        }
+
+        function describeInputToken() {
+            const ex = snapshotExample();
+            if (!ex) return 'Initialize the model and train at least once to capture an example.';
+            return `Current pair <span class="mono">#${ex.pairIndex}</span>: <span class="mono">${ex.xTok}</span> should predict <span class="mono">${ex.yTok}</span>.`;
+        }
+
+        function describeEmbeddingLookup() {
+            const ex = snapshotExample();
+            if (!ex) return 'Once an example is available we will show the row lookup.';
+            return `We index into <span class="mono">W</span> using token <span class="mono">${ex.xTok}</span> (id ${ex.xIdx}) and grab its entire row of ${state.vocab.length} logits.`;
+        }
+
+        function describeLogitsView() {
+            const ex = snapshotExample();
+            if (!ex) return 'Run one training step to see the logits summary.';
+            const best = argSortDesc(ex.logits).slice(0, 3).map(([i, v]) => `${state.itos[i]}=${v.toFixed(2)}`).join(', ');
+            return `Highest logits right now → <span class="mono">${best}</span>. These are raw scores; larger numbers mean “more likely next token.”`;
+        }
+
+        function describeSoftmaxView() {
+            const ex = snapshotExample();
+            if (!ex) return 'Softmax details appear after an example forward pass.';
+            const best = argSortDesc(ex.probs)[0];
+            return `After softmax the top probability is <span class="mono">${state.itos[best[0]]}</span> at ${best[1].toFixed(3)}. All probabilities sum to 1.`;
+        }
+
+        function describeLossView() {
+            const ex = snapshotExample();
+            if (!ex) return 'Loss needs one forward pass. Train the model to see it.';
+            return `The target token <span class="mono">${ex.yTok}</span> currently has probability <span class="mono">${ex.probs[ex.yIdx].toFixed(3)}</span>, which gives loss <span class="mono">${ex.loss.toFixed(3)}</span>. Lower loss means the model is more confident in the correct next token.`;
+        }
+
+        function describeGradientSignal() {
+            if (!state.lastForward) return 'Gradients only exist after running a training step.';
+            const ex = state.lastForward;
+            const grad = ex.grad;
+            const targetGrad = grad[ex.yIdx];
+            return `Gradient for the target token <span class="mono">${ex.yTok}</span> is <span class="mono">${targetGrad.toFixed(3)}</span>. We want it to become negative so the optimizer increases its logit.`;
+        }
+
+        function describeGradientInterpret() {
+            if (!state.lastForward) return 'Train at least once to show gradient directions.';
+            const ex = state.lastForward;
+            const strongest = ex.grad
+                .map((g, i) => ({ token: state.itos[i], value: g }))
+                .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))[0];
+            return `Largest |gradient| is for token <span class="mono">${strongest.token}</span> with value <span class="mono">${strongest.value.toFixed(3)}</span>. Negative → push logit up, positive → push it down.`;
+        }
+
+        function describeWeightUpdate() {
+            if (!state.lastForward) return 'No update info yet. Run a training step.';
+            const ex = state.lastForward;
+            const lr = state.lr;
+            return `We update only row <span class="mono">W[${ex.xTok}]</span>: new value = old value − lr × grad. With lr=${lr}, a gradient of 0.25 nudges the weight by ${(-lr * 0.25).toFixed(3)}.`;
+        }
+
+        function describeNextPair() {
+            if (!state.x.length) return 'Build the dataset first.';
+            const nextIndex = (state.currentPairIndex) % state.x.length;
+            const nextTok = state.itos[state.x[nextIndex]];
+            const nextTarget = state.itos[state.y[nextIndex]];
+            return `Next up is pair <span class="mono">${nextTok} → ${nextTarget}</span>. Training keeps rotating through the corpus so every transition gets updated.`;
+        }
+
+        function describeInferenceReady() {
+            if (!state.step) return 'After several updates we can talk about inference. Train a few steps first.';
+            return `After ${state.step} updates the rows of <span class="mono">W</span> encode which next tokens are likely. Now we can feed any token into the sampler to generate text.`;
+        }
+
         function trainOneStep() {
+            stopStoryboardAuto();
+            state.highlightStage = null;
             if (!state.W.length) initWeights();
             const ex = currentExample();
             if (!ex) return;
@@ -716,6 +914,8 @@ the mat was warm</textarea>
         }
 
         function runInference() {
+            stopStoryboardAuto();
+            state.highlightStage = null;
             if (!state.W.length) initWeights();
             const start = document.getElementById('inferToken').value.trim().toLowerCase();
             const len = Math.max(1, Math.min(40, Number(document.getElementById('genLength').value) || 10));
@@ -755,10 +955,12 @@ the mat was warm</textarea>
         function renderStepStrip() {
             const wrap = document.getElementById('stepStrip');
             wrap.innerHTML = '';
+            const activeStage = state.highlightStage ?? state.currentStage;
+            const doneStage = state.currentStage;
             stages.forEach((s, i) => {
                 let cls = 'step-card';
-                if (state.currentStage === i) cls += ' active';
-                if (state.currentStage > i) cls += ' done';
+                if (activeStage === i) cls += ' active';
+                if (doneStage > i) cls += ' done';
                 const d = document.createElement('div');
                 d.className = cls;
                 d.innerHTML = `<div class="badge">${i}</div><div><strong>${s.title}</strong></div><div class="muted" style="font-size:12px;margin-top:6px;">${s.desc}</div>`;
@@ -778,12 +980,14 @@ the mat was warm</textarea>
                 ['Inference', 'Sample output token'],
             ];
             const wrap = document.getElementById('pipelineViz');
+            const activeStage = state.highlightStage ?? state.currentStage;
             wrap.innerHTML = stagesSmall.map((s, i) => {
-                const hi = i === state.currentStage ? 'highlight' : '';
+                const hi = i === activeStage ? 'highlight' : '';
                 return `<div class="pipeline-step ${hi}"><strong>${s[0]}</strong><div class="muted" style="font-size:12px;margin-top:6px;">${s[1]}</div></div>${i < stagesSmall.length - 1 ? '<div class="arrow">→</div>' : ''}`;
             }).join('');
 
-            document.getElementById('stageDescription').textContent = stages[state.currentStage]?.desc || 'Initialize the model.';
+            const descStage = stages[activeStage] || stages[state.currentStage] || stages[0];
+            document.getElementById('stageDescription').textContent = descStage?.desc || 'Initialize the model.';
         }
 
         function renderMatrix() {
@@ -917,12 +1121,129 @@ the mat was warm</textarea>
             }).join('');
         }
 
+        function getStoryboardSteps() {
+            return state.storyMode === 'forward' ? forwardStoryboard : backwardStoryboard;
+        }
+
+        function updateStoryPlayButton() {
+            const btn = document.getElementById('storyPlayBtn');
+            if (!btn) return;
+            if (state.storyTimer) {
+                btn.textContent = 'Stop autoplay';
+                btn.classList.add('warn');
+                btn.classList.remove('primary');
+            } else {
+                btn.textContent = 'Play stages';
+                btn.classList.add('primary');
+                btn.classList.remove('warn');
+            }
+        }
+
+        function stopStoryboardAuto() {
+            if (state.storyTimer) {
+                clearInterval(state.storyTimer);
+                state.storyTimer = null;
+            }
+            updateStoryPlayButton();
+        }
+
+        function applyStoryboardHighlight() {
+            const steps = getStoryboardSteps();
+            const step = steps[state.storyIndex];
+            state.highlightStage = step ? step.stageIndex : null;
+        }
+
+        function renderStoryboard() {
+            const wrap = document.getElementById('storyboard');
+            const forwardBtn = document.getElementById('forwardModeBtn');
+            const backwardBtn = document.getElementById('backwardModeBtn');
+            if (!wrap || !forwardBtn || !backwardBtn) return;
+
+            const steps = getStoryboardSteps();
+            const step = steps[state.storyIndex];
+
+            forwardBtn.classList.toggle('active', state.storyMode === 'forward');
+            backwardBtn.classList.toggle('active', state.storyMode === 'backward');
+
+            updateStoryPlayButton();
+
+            if (!step) {
+                wrap.innerHTML = '<div class="story-card"><p class="muted">Interact with the controls to explore each stage.</p></div>';
+                return;
+            }
+
+            const progress = ((state.storyIndex + 1) / steps.length) * 100;
+            wrap.innerHTML = `
+        <div class="story-progress">
+          <span class="badge">${state.storyMode === 'forward' ? 'Forward pass' : 'Backward pass'}</span>
+          <div class="progress-bar"><span style="width:${progress}%"></span></div>
+          <span class="mono muted">${state.storyIndex + 1}/${steps.length}</span>
+        </div>
+        <div class="story-card">
+          <h3>${step.title}</h3>
+          <p>${step.desc}</p>
+          <div class="note" style="margin-top:12px;">${step.detail ? step.detail() : ''}</div>
+        </div>
+        <div class="story-dots">
+          ${steps.map((_, i) => `<div class="story-dot ${i === state.storyIndex ? 'active' : ''}" data-story-index="${i}"></div>`).join('')}
+        </div>
+      `;
+
+            wrap.querySelectorAll('.story-dot').forEach(dot => {
+                dot.addEventListener('click', () => {
+                    stopStoryboardAuto();
+                    state.storyIndex = Number(dot.dataset.storyIndex);
+                    applyStoryboardHighlight();
+                    renderAll();
+                });
+            });
+        }
+
+        function setStoryboardMode(mode) {
+            stopStoryboardAuto();
+            if (state.storyMode !== mode) {
+                state.storyMode = mode;
+                state.storyIndex = 0;
+            }
+            applyStoryboardHighlight();
+            renderAll();
+        }
+
+        function moveStoryboard(delta) {
+            const steps = getStoryboardSteps();
+            if (!steps.length) return;
+            const next = Math.min(Math.max(state.storyIndex + delta, 0), steps.length - 1);
+            state.storyIndex = next;
+            applyStoryboardHighlight();
+            renderAll();
+        }
+
+        function toggleStoryboardPlay() {
+            if (state.storyTimer) {
+                stopStoryboardAuto();
+                return;
+            }
+            applyStoryboardHighlight();
+            state.storyTimer = setInterval(() => {
+                const steps = getStoryboardSteps();
+                if (state.storyIndex >= steps.length - 1) {
+                    stopStoryboardAuto();
+                    return;
+                }
+                state.storyIndex += 1;
+                applyStoryboardHighlight();
+                renderAll();
+            }, 1600);
+            updateStoryPlayButton();
+        }
+
         function renderAll() {
             renderStepStrip();
             renderPipeline();
             renderMatrix();
             renderVocabAndPairs();
             renderExample();
+            renderStoryboard();
             renderTrainingState();
             renderGradients();
         }
@@ -932,6 +1253,21 @@ the mat was warm</textarea>
         document.getElementById('tenStepBtn').addEventListener('click', () => trainMany(10));
         document.getElementById('runInferenceBtn').addEventListener('click', runInference);
         document.getElementById('resetWeightsBtn').addEventListener('click', initWeights);
+        document.getElementById('forwardModeBtn').addEventListener('click', () => {
+            setStoryboardMode('forward');
+        });
+        document.getElementById('backwardModeBtn').addEventListener('click', () => {
+            setStoryboardMode('backward');
+        });
+        document.getElementById('storyPrevBtn').addEventListener('click', () => {
+            stopStoryboardAuto();
+            moveStoryboard(-1);
+        });
+        document.getElementById('storyNextBtn').addEventListener('click', () => {
+            stopStoryboardAuto();
+            moveStoryboard(1);
+        });
+        document.getElementById('storyPlayBtn').addEventListener('click', toggleStoryboardPlay);
 
         initWeights();
     </script>
