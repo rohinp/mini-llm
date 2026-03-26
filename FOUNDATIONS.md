@@ -1,20 +1,59 @@
 # Building a Mini LLM — Foundations (Step 0)
 
-This document captures the conceptual foundation before implementing a transformer-based language model from scratch.
+This section builds the intuition you need before writing any model code.
 
-The goal is clarity. No magic. No black boxes.
+You don’t need to understand everything on the first read.
+👉 If something feels unclear, continue to the Bigram Model — things will click once you see code.
+
+---
+
+## Why Start with a Bigram Model?
+
+Because it’s the simplest possible language model.
+
+It helps you understand:
+
+* How models learn patterns
+* How predictions are made
+* What training actually does
+
+We’ll start simple → then gradually build toward a transformer.
+
+---
+
+## What to Expect
+
+* Minimal math
+* Strong intuition
+* Direct connection to code
+
+**Goal: No magic. No black boxes.**
 
 ---
 
 # 1. What Is a Language Model?
 
-A language model estimates:
+As a developer, think of a language model as a function:
+
+```python
+next_token = model(previous_tokens)
+```
+
+It takes a sequence of tokens as input and predicts what comes next.
+
+More formally:
 
 $$
 P(\text{next token} \mid \text{previous tokens})
 $$
 
-Example:
+In simple terms:
+
+👉 “Given what I’ve seen so far, what is the most likely next token?”
+
+---
+
+### Example
 
 Input:
 
@@ -22,20 +61,21 @@ Input:
 "To be or not to"
 ```
 
-Model predicts:
+Prediction:
 
 ```
 "be"
 ```
 
-Training objective:
+---
 
-Minimize cross-entropy (negative log-likelihood) between:
+## Two Phases of a Model
 
-* Predicted next-token distribution
-* Actual next token (treated as the ground-truth class)
+1. **Training**
+   The model learns patterns from data.
 
-Cross-entropy heavily penalizes confident wrong guesses, so the model learns to put its probability mass on the correct continuation.
+2. **Inference**
+   The model uses what it learned to generate predictions.
 
 ---
 
@@ -43,7 +83,11 @@ Cross-entropy heavily penalizes confident wrong guesses, so the model learns to 
 
 A **token** is the smallest unit processed by the model.
 
-Depending on tokenizer:
+Before anything happens, text is broken into tokens.
+
+---
+
+### Types of Tokenization
 
 | Type            | Example             |
 | --------------- | ------------------- |
@@ -51,22 +95,28 @@ Depending on tokenizer:
 | Word-level      | `"To"`, `"be"`      |
 | Subword         | `"To"`, `" be"`     |
 
-For our mini model:
-👉 We use **character-level tokens**.
+---
+
+### In This Project
+
+We use **character-level tokens**.
 
 Why?
 
-* Tiny vocab (just unique characters) → simple embeddings and no extra tooling.
-* Works even if you only have a few kilobytes of text.
+* Very small vocabulary
+* Simple to implement
+* Works with tiny datasets
 
-Trade-offs to remember:
+---
 
-* Sequences get longer because each word is many characters.
-* Semantics are weaker than word/subword tokenizers.
+### Trade-offs
 
-As soon as you outgrow toy datasets, you typically switch to subword tokenizers (BPE, WordPiece, SentencePiece) to shrink sequence length without exploding vocab size.
+* Longer sequences
+* Weaker understanding of meaning
 
-Example:
+---
+
+### Example
 
 Text:
 
@@ -82,25 +132,31 @@ Tokens:
 
 ---
 
+### Why This Matters (Real World)
+
+* Token count affects API cost
+* Context limits depend on tokens
+* Tokenization impacts model quality
+
+---
+
 # 3. Vocabulary Size vs Sequence Length
 
-These are completely different concepts.
+These are two very different concepts.
 
 ---
 
 ## Vocabulary Size
 
-Total number of unique tokens in dataset.
+Total number of unique tokens.
 
 Example:
 
-If Tiny Shakespeare contains 65 unique characters:
-
 $$
-vocab\_size = 65
+vocab_size = 65
 $$
 
-This is fixed after analyzing dataset.
+👉 All possible symbols the model knows.
 
 ---
 
@@ -111,79 +167,74 @@ How many tokens the model sees at once.
 Example:
 
 $$
-sequence\_length = 128
+sequence_length = 128
 $$
 
-That means:
-
-The model receives 128 consecutive tokens as input.
-
-This also defines the **context window**.
+👉 How much context the model can use.
 
 ---
 
-## Visual Comparison
+### Mental Model
 
-Vocabulary:
-
-```
-Total possible symbols: 65
-```
-
-Sequence:
-
-```
-[ T o   b e   o r   n o t ... ]  (128 tokens long)
-```
-
-Vocabulary = possible choices
-Sequence length = how many tokens we feed at once
-
-They are independent.
+* Vocabulary → all possible words/characters
+* Sequence length → how much the model “remembers”
 
 ---
 
 # 4. Batch Size
 
-Batch size = number of sequences processed in parallel.
+Batch size = number of sequences processed together.
 
 If:
 
 $$
-batch\_size = 32
+batch_size = 32,\quad sequence_length = 128
 $$
 
-and
-
-$$
-sequence\_length = 128
-$$
-
-Then tensor shape:
+Then:
 
 ```
 (32, 128)
 ```
 
-Meaning:
+---
 
-* 32 independent sequences
+### Meaning
+
+* 32 sequences
 * Each 128 tokens long
 
-Tokens processed per step = `batch_size × sequence_length` → here `32 × 128 = 4096` tokens. That total, along with `embedding_dimension`, mostly dictates VRAM usage and compute time.
+---
 
-### Important:
+### Why This Matters
+
+* Larger batch → faster training (needs more memory)
+* Smaller batch → slower but safer
+
+---
+
+## Important
 
 Batch items do NOT see each other.
 They are processed independently.
 
 ---
 
-# 5. Core Tensor Shape in Transformers
+# 5. Tensors (Core Data Structure)
 
-Most common shape:
-[Shape demo](part0/shape_demo.py)
-[Tensor demo](part0/tensor_basics.py)
+A **tensor** is just a multi-dimensional array.
+
+---
+
+### Think of it like:
+
+* 1D → list
+* 2D → matrix
+* 3D → batch of matrices
+
+---
+
+### Common Shape in Models
 
 ```
 (batch_size, sequence_length, embedding_dimension)
@@ -195,26 +246,13 @@ Example:
 (32, 128, 64)
 ```
 
-Meaning:
+---
+
+### Meaning
 
 * 32 sequences
 * 128 tokens each
-* Each token represented by 64 numbers
-
----
-
-## Visual Breakdown
-
-Think of it like:
-
-```
-Batch 0:
-    Token 0 → [64 numbers]
-    Token 1 → [64 numbers]
-    ...
-Batch 1:
-    Token 0 → [64 numbers]
-```
+* Each token → 64 numbers
 
 ---
 
@@ -227,43 +265,50 @@ Tokens start as integers:
 'o' → 14
 ```
 
-Embedding layer converts:
+The model cannot understand raw numbers like this.
+
+So we convert them into vectors:
 
 ```
 19 → [0.12, -0.44, 0.91, ...]
 ```
 
-If:
+---
 
-$$
-embedding\_dimension = 64
-$$
+### Definition
 
-Each token becomes a 64-length vector.
+Embedding = learned numerical representation of a token.
 
 ---
 
-## Conceptually
+### Why This Matters
 
-Embedding = learned feature space.
-
-Higher dimension →
-More expressive power
-More compute cost
+👉 Converts symbols into something the model can learn from
 
 ---
 
-# 7. Why We Break a Novel Into Chunks
+### Intuition
 
-We treat the entire novel as one long stream:
+Think of embeddings as coordinates in space:
+
+* Similar tokens → closer together
+* Different tokens → farther apart
+
+---
+
+# 7. How Training Data Is Prepared
+
+We treat the dataset as one long sequence:
 
 ```
-[ t0, t1, t2, t3, t4, ... ]
+[t0, t1, t2, t3, t4, ...]
 ```
 
-Then create training samples:
+---
 
-If sequence_length = 4
+### Create Input Sequences
+
+If `sequence_length = 4`:
 
 ```
 [t0, t1, t2, t3]
@@ -271,51 +316,104 @@ If sequence_length = 4
 [t2, t3, t4, t5]
 ```
 
-Targets are just the same windows shifted left by one token:
+---
 
-| Input tokens      | Target tokens     |
-| ----------------- | ----------------- |
+### Targets (Shifted by One)
+
+| Input (x)          | Target (y)         |
+| ------------------ | ------------------ |
 | `[t0, t1, t2, t3]` | `[t1, t2, t3, t4]` |
-| `[t1, t2, t3, t4]` | `[t2, t3, t4, t5]` |
 
-During training we feed the input window and ask the model to predict the target window one token at a time—this is the next-token objective in action.
+---
 
-This is called sliding window training.
+### What Are We Teaching?
 
-Why not entire novel?
+👉 “Given this context, what comes next?”
 
-Because attention complexity is:
+Repeated thousands of times → model learns patterns.
+
+---
+
+# 8. How Training Actually Works (Big Picture)
+
+Every training step follows this loop:
+
+1. Take input tokens
+2. Predict next tokens
+3. Compare with actual output (loss)
+4. Update the model
+
+---
+
+## Visual Flow
+
+```
+Input → Model → Prediction → Loss → Update → Repeat
+```
+
+---
+
+## In Code
+
+```python
+logits = model(x)
+loss = loss_fn(logits, y)
+loss.backward()
+optimizer.step()
+```
+
+---
+
+This loop runs thousands (or millions) of times.
+
+That’s how the model learns.
+
+---
+
+# 9. Why Not Use the Entire Dataset at Once?
+
+Because of attention.
+
+Attention compares every token with every other token.
+
+---
+
+### Complexity
 
 $$
 O(n^2)
 $$
 
-If sequence length doubles,
-computation roughly quadruples.
+If sequence length doubles → computation ~4x
 
 ---
 
-# 8. What Is Attention Computation?
+That’s why we use smaller chunks (sequence length).
 
-Inside one sequence of length N:
+---
 
-Each token compares with every other token.
+# 10. What Is Attention? (High-Level)
 
-Attention matrix size:
+Attention allows each token to look at other tokens in the sequence.
 
-$$
-N \times N
-$$
+---
 
-Example:
+### Example
 
-Sequence length = 4
+Tokens:
 
 ```
-Tokens: [A, B, C, D]
+[A, B, C, D]
 ```
 
-Attention matrix:
+Each token checks:
+
+* Which tokens matter more?
+* Which tokens should I focus on?
+
+---
+
+### Matrix View
 
 ```
         A    B    C    D
@@ -325,103 +423,70 @@ C     [ •    •    •    • ]
 D     [ •    •    •    • ]
 ```
 
-Each row = how much that token cares about others.
+---
 
-If sequence length = 128:
-
-Attention matrix = 128 × 128
-
-This is why attention is quadratic.
+Each row = how much a token attends to others.
 
 ---
 
-# 9. What Is a Gradient?
+# 11. What Is Loss?
 
-Suppose we have a loss function:
+Loss measures how wrong the model is.
 
-$$
-L(w)
-$$
-
-Gradient:
-
-$$
-\frac{dL}{dw}
-$$
-
-It tells us:
-
-"If I slightly change w, how does loss change?"
+* High loss → bad prediction
+* Low loss → good prediction
 
 ---
 
-## Example
+# 12. What Is a Gradient?
 
-$$
-f(x) = x^2
-$$
+Gradient tells us:
 
-Derivative:
-
-$$
-\frac{df}{dx} = 2x
-$$
-
-If:
-
-$$
-x = 3
-$$
-
-Then:
-
-$$
-\text{gradient} = 6
-$$
-
-Meaning:
-Increasing x increases loss.
+👉 How to change the model to reduce error
 
 ---
 
-# 10. Why Move Opposite to Gradient?
+### Intuition
 
-Gradient points toward steepest increase.
+“If I change this parameter slightly, does loss go up or down?”
 
-To reduce loss:
+---
+
+# 13. Why Move Opposite to Gradient?
+
+Gradient points uphill (increasing loss).
+
+We want to go downhill.
 
 $$
 w_{\text{new}} = w - \eta \cdot \frac{dL}{dw}
 $$
 
-Where:
+---
 
-* $\eta$ = learning rate
+### Rule of Thumb
 
-If gradient is positive:
-→ decrease weight
-
-If gradient is negative:
-→ increase weight
+* Gradient positive → decrease weight
+* Gradient negative → increase weight
 
 ---
 
-# 11. What Does backward() Do?
+# 14. What Does `backward()` Do?
 
-Calling:
-
-```
+```python
 loss.backward()
 ```
 
-Computes:
+👉 Computes gradients for all model parameters
 
-$$
-\frac{\partial L}{\partial w_1},
-\frac{\partial L}{\partial w_2},
-\frac{\partial L}{\partial w_3},
-\ldots
-$$
+---
+
+### Important
+
+* It does NOT update weights
+* It only calculates gradients
+
+---
 
 Gradients are stored in:
 
@@ -429,80 +494,78 @@ Gradients are stored in:
 parameter.grad
 ```
 
-Important:
+---
 
-`.backward()` does NOT update weights.
-
-Optimizer step updates weights.
-
-Typical training loop order:
+# 15. Full Training Loop
 
 ```python
 for batch in dataloader:
-    optimizer.zero_grad()      # clear stale gradients
-    logits = model(batch)      # forward pass
+    optimizer.zero_grad()
+    logits = model(batch)
     loss = loss_fn(logits, targets)
-    loss.backward()            # compute gradients
-    optimizer.step()           # apply parameter update
+    loss.backward()
+    optimizer.step()
 ```
-
-Zeroing grads first avoids mixing gradient information between batches.
 
 ---
 
-# 12. Learning Rate and Stability
-
-Update rule:
+# 16. Learning Rate and Stability
 
 $$
 w = w - \eta \cdot \text{gradient}
 $$
 
-If:
+---
 
-* Gradient large
-* Learning rate large
+### If learning rate is too high:
 
-Then update is huge.
+* Training becomes unstable
+* Loss may explode
+* Model may fail
 
-Possible outcomes:
+---
 
-* Overshooting minimum
-* Instability
-* Divergence
-* Loss becomes NaN
+### If too low:
 
-Training stability requires balance.
+* Training becomes very slow
 
 ---
 
 # Core Mental Model
 
-Loss surface = landscape
-Weights = position
-Gradient = compass pointing uphill
-Optimizer step = move downhill
-
-Training = many small downhill steps.
+* Loss = how wrong we are
+* Gradient = direction to improve
+* Optimizer = how we update
+* Training = repeated improvement
 
 ---
 
-# Conceptual Map So Far
+# Conceptual Map
 
-You now understand:
+You’ve now been exposed to:
 
 * Tokens
-* Vocabulary size
+* Vocabulary
 * Sequence length
 * Batch size
-* Embedding dimension
-* Attention scaling
+* Embeddings
+* Attention
+* Loss
 * Gradients
 * Backpropagation
-* Learning rate effects
 
-This foundation ensures that when we implement the transformer, nothing feels magical.
+---
 
-Everything will be mechanical.
+You don’t need to fully understand everything yet.
 
-> Courtesy Chatgpt, Reviewer Codex and me.
+As we build the model step by step, these concepts will become concrete.
+
+---
+
+Reference Code:
+1. [Tensor demo](./part0/tensor_basics.py)
+2. [Shape demo](./part0/shape_demo.py)
+3. [embedding demo](./part0/embedding_demo.py)
+
+
+👉 Next: **[Bigram Model](./PART_2_BIGRAM_MODEL.md) (your first working language model)**

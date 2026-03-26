@@ -71,7 +71,11 @@ def get_batch(split, batch_size_override=None, sequence_length_override=None):
     data_source = train_data if split == "train" else val_data
 
     bs = batch_size if batch_size_override is None else batch_size_override
-    sl = sequence_length if sequence_length_override is None else sequence_length_override
+    sl = (
+        sequence_length
+        if sequence_length_override is None
+        else sequence_length_override
+    )
 
     # Random starting positions
     ix = torch.randint(len(data_source) - sl, (bs,))
@@ -97,4 +101,31 @@ print("\nDecoded target:")
 print(decode(yb[0].tolist()))
 
 
-"""--------Part 2 — Bigram Language Model.----"""
+# --------- REFER THIS AFTER PART 5 OR LEARNING CONTEXT AWARE MODELS PART --------
+
+
+def get_batch_with_block(split, block_size, batch_size_override=None):
+    data = train_data if split == "train" else val_data
+    bs = batch_size if batch_size_override is None else batch_size_override
+    ix = torch.randint(len(data) - block_size, (bs,))
+
+    x = torch.stack([data[i : i + block_size] for i in ix])  # (B, block_size)
+    y = torch.stack([data[i + block_size] for i in ix])  # (B)
+
+    return x, y
+
+
+xbb, ybb = get_batch_with_block("train", 8)
+
+print("-------------batch with block shape-----------------")
+print("Input batch shape:", xbb.shape)
+print("Target batch shape:", ybb.shape)
+print("\nFirst input example:")
+print(xbb[0])
+print("\nDecoded input:")
+print(decode(xbb[0].tolist()))
+
+print("\n target:")
+print(ybb[0].item())
+print("\nDecoded target:")
+print(decode([ybb[0].item()]))
