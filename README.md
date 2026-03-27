@@ -17,7 +17,7 @@ We will go from raw text → tokens → embeddings → transformer → training 
 
 3. [Neural Bigram](./PART_3_NEURAL_BIGRAM.md)
 
-4. [Neural Bigram Model](./Part_4_EMBEDDING_CONTEXT.md) Here is continue to explore and repeate what we did in previous section. We also wrap up with the code here.
+4. [Model With Embedding context](./Part_4_EMBEDDING_CONTEXT.md)
 
 5. WIP...
 
