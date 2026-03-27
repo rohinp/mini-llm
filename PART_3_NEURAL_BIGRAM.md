@@ -162,7 +162,7 @@ loss = cross_entropy(probs, targets)
 Because `F.cross_entropy` internally does:
 
 $$
-\text{log_softmax}(logits)
+\text{log\_softmax}(logits)
 $$
 
 ---
@@ -501,5 +501,3 @@ to:
 ```text
 P(next | multiple tokens)
 ```
-
-This leads to transformers.

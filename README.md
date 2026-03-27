@@ -9,15 +9,15 @@ We will go from raw text → tokens → embeddings → transformer → training 
 
 ---
 
-1. Start from here [Foundations](FOUNDATIONS.md), there can be some concepts still not clear but be patient lot of those are repeated in the below docs.
+1. Start from here [Foundations](./FOUNDATIONS.md), there can be some concepts still not clear but be patient lot of those are repeated in the below docs.
 
-2. [Data Pipeline](PART_1_DATA_PIPELINE.md) This is where we work on data preparation and also understand how we feed data to train a model. It might happen that the concepts are jumping a step ahead, to make feel comfortable you can directly start with [Bigram model](PART_2_BIGRAM_MODEL.md)
+2. [Data Pipeline](./PART_1_DATA_PIPELINE.md) This is where we work on data preparation and also understand how we feed data to train a model. It might happen that the concepts are jumping a step ahead, to make feel comfortable you can directly start with [Bigram model](./PART_2_BIGRAM_MODEL.md)
 
-2. [Bigram model](PART_2_BIGRAM_MODEL.md)
+2. [Bigram model](./PART_2_BIGRAM_MODEL.md)
 
-3. [Neural Bigram Foundations](PART_3_NEURAL_BIGRAM.md)
+3. [Neural Bigram](./PART_3_NEURAL_BIGRAM.md)
 
-4. [Neural Bigram Model](PART_4_NEURAL_BIGRAM.md) Here is continue to explore and repeate what we did in previous section. We also wrap up with the code here.
+4. [Neural Bigram Model](./Part_4_EMBEDDING_CONTEXT.md) Here is continue to explore and repeate what we did in previous section. We also wrap up with the code here.
 
 5. WIP...
 
