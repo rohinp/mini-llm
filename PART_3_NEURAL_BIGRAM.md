@@ -336,15 +336,13 @@ Gradients flow backward.
 
 ---
 
----
-
 ### 3. optimizer.step()
 
-👉 Updates weights
+👉 Updates model weights using computed gradients
 
 ---
 
-## Formula
+## Update Rule
 
 $$
 w = w - \eta \cdot \frac{dL}{dw}
@@ -352,19 +350,135 @@ $$
 
 ---
 
-## Optimizer Used
+## What is $\eta$?
+
+$\eta$ (eta) is the **learning rate**.
+
+👉 It controls **how big a step we take during each update**
+
+---
+
+## Intuition
+
+Think of training like walking downhill on a mountain:
+
+- Gradient → tells you direction (which way is downhill)
+- Learning rate → tells you **how big a step to take**
+
+---
+
+## Visual
+
+```text
+Too small step:
+[ w ] → . → . → . → (very slow progress)
+
+Good step:
+[ w ] ------→ (fast and stable)
+
+Too large step:
+[ w ] -----------→ (overshoots and oscillates)
+````
+
+---
+
+## What Happens If Learning Rate Is…
+
+### 🔹 Too Small
+
+* Training is very slow
+* May take forever to converge
+* Gets stuck easily
+
+---
+
+### 🔹 Too Large
+
+* Overshoots minimum
+* Loss may increase
+* Training becomes unstable
+* Can produce NaN values
+
+---
+
+## Example
+
+If:
+
+$$
+\eta = 0.01
+$$
+
+Small updates → stable but slow
+
+If:
+
+$$
+\eta = 1.0
+$$
+
+Very large updates → likely unstable
+
+---
+
+## In Code
+
+```python
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+```
+
+👉 Here:
+
+$$
+\eta = 0.01
+$$
+
+---
+
+## Why 1e-2 Here?
+
+* Small model
+* Simple task (character prediction)
+* Fast experimentation
+
+👉 Works well as a starting point
+
+---
+
+## Important Insight
+
+Learning rate is one of the **most important hyperparameters**.
+
+👉 It directly affects:
+
+* Speed of learning
+* Stability of training
+* Final model quality
+
+---
+
+## Bonus (Good to Know)
 
 ```python
 torch.optim.Adam
 ```
 
+Modern optimizers like **Adam**:
+
+* Adjust learning rate internally
+* Use adaptive updates per parameter
+
+👉 So even if global $\eta$ is fixed, effective updates vary
+
 ---
 
-### Why Adam?
+## Mental Model
 
-* Adaptive learning rate
-* Faster convergence
-* Works well by default
+```text
+Gradient = direction
+Learning rate = step size
+Optimizer = how we walk
+```
 
 ---
 
@@ -485,19 +599,3 @@ You now have:
 👉 This is the foundation of all LLMs.
 
 ---
-
-# What Comes Next
-
-👉 Part 4 — More Context (Beyond 1 Token)
-
-We move from:
-
-```text
-P(next | token)
-```
-
-to:
-
-```text
-P(next | multiple tokens)
-```
