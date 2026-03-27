@@ -1,90 +1,99 @@
 # Part 2 — Bigram Language Model (Deep Dive)
 
-In this section, we implemented a **Bigram Language Model**. The doccument contains both:
+In this section, we build the **simplest possible language model**.
 
-* The statistical concept
-* The PyTorch mechanics behind it
+👉 No neural networks
+👉 No embeddings
+👉 No training loop
 
-Here is the [code](bigram.py)
-This model predicts the next token using only the current token.
+Just counting patterns in data.
+
+---
+
+## Big Picture
+
+We want to answer:
+
+👉 “Given a token, what is the most likely next token?”
+
+Mathematically:
 
 $$
 P(t_{i+1} \mid t_i)
 $$
 
-No embeddings.
-No neural networks.
-No attention.
-
-Pure statistical modeling.
+This is called a **Bigram Model**.
 
 ---
 
-# 1. Bigram Model Definition
+# 1. What Is a Bigram Model?
 
 A bigram model assumes:
 
-$$
-P(t_{i+1} \mid t_i)
-$$
-
-Meaning:
-
-The next token depends only on the current token.
-
-This is called **1-token memory**.
-
-
-`The Math: Conditional Probability`
-
-In a bigram model, we simplify the probability of a whole sentence by assuming each word depends only on its immediate predecessor. This is known as a First-Order Markov Assumption.The probability of a word $w_n$ given the previous word $w_{n-1}$ is calculated as:
-
-$$
-P(w_n | w_{n-1}) = \frac{Count(w_{n-1}, w_n)}{Count(w_{n-1})}
-$$
-
-In plain English:To find the chance of "cat" following "the," you count how many times "the cat" appears in your text and divide it by the total number of times "the" appears.
+👉 The next token depends **only on the current token**
 
 ---
 
-## Memory Definition
+### Example
 
-* 1-token memory → depends on previous 1 token
-* 2-token memory (trigram) → depends on previous 2 tokens
-* n-token memory → depends on previous n tokens
+If current token = `'t'`
+Model predicts:
 
-Bigram = memory size 1.
+* `'h'` with high probability
+* `'x'` with low probability
 
 ---
 
-# 2. Building the Bigram Count Matrix
+### Memory Definition
 
-We construct a matrix:
+* Bigram → looks at **1 previous token**
+* Trigram → looks at **2 tokens**
+* N-gram → looks at **N tokens**
+
+👉 Bigram = **1-token memory**
+
+---
+
+# 2. From Text → Counts
+
+We scan the dataset and count transitions:
+
+```python
+for i in range(len(data) - 1):
+    current_token = data[i].item()
+    next_token = data[i + 1].item()
+    bigram_counts[current_token, next_token] += 1
+```
+
+---
+
+## What This Builds
+
+A matrix:
 
 $$
-bigram\_counts \in \mathbb{R}^{V \times V}
+\text{bigram\_counts} \in \mathbb{R}^{V \times V}
 $$
 
 Where:
 
-* ( V = vocab\_size )
-
-Each entry:
-
-$$
-bigram\_counts [i, j]
-$$
-
-Represents:
-
-> How many times token j followed token i
+* Row = current token
+* Column = next token
 
 ---
 
-## Example (Small Vocab = 3)
+### Intuition
 
+```text
+Row = "what I have now"
+Column = "what comes next"
 ```
-bigram_counts =
+
+---
+
+## Example
+
+```id="example_matrix"
 [
  [2, 3, 5],
  [4, 1, 5],
@@ -92,284 +101,204 @@ bigram_counts =
 ]
 ```
 
-Row = current token
-Column = next token
+👉 If current token = row 0
+→ next token probabilities come from that row
 
 ---
 
-# 3. Row Normalization (Counts → Probabilities)
+# 3. Counts → Probabilities
 
-We convert counts into probabilities using:
+Raw counts are not enough—we need probabilities.
+
+---
+
+## Code
 
 ```python
 bigram_probs = bigram_counts.float()
 bigram_probs = bigram_probs / bigram_probs.sum(dim=1, keepdim=True)
 ```
 
-Let’s understand this line fully.
+---
+
+## What’s Happening?
+
+### Step 1 — Convert to Float
+
+Counts are integers:
+
+```
+2, 3, 5
+```
+
+We convert to:
+
+```
+2.0, 3.0, 5.0
+```
+
+👉 Because probabilities need decimals.
 
 ---
 
-## Step 1 — Row-wise Sum
+### Step 2 — Normalize Rows
 
-```python
-bigram_probs.sum(dim=1)
-```
-
-`dim=1` means:
-
-Sum across columns → row-wise sum.
-
-Example:
-
-```
-Row 0: 2 + 3 + 5 = 10
-Row 1: 4 + 1 + 5 = 10
-Row 2: 1 + 1 + 8 = 10
-```
-
-Result:
-
-```
-[10, 10, 10]
-```
-
-Shape:
-
-```
-(3,)
-```
+Each row becomes a probability distribution.
 
 ---
 
-## Step 2 — Why `keepdim=True`?
+### Example
 
-Without `keepdim=True`, shape = `(3,)`
-
-With `keepdim=True`, shape = `(3, 1)`
+Before:
 
 ```
-[
- [10],
- [10],
- [10]
-]
+[2, 3, 5]
 ```
 
-This allows proper broadcasting during division.
-
----
-
-## Step 3 — Broadcasting Division
-
-We divide:
+Sum:
 
 ```
-(3,3) / (3,1)
+10
 ```
 
-Broadcasting expands `(3,1)` to:
+After:
 
 ```
-[
- [10,10,10],
- [10,10,10],
- [10,10,10]
-]
+[0.2, 0.3, 0.5]
 ```
-
-So division becomes:
-
-```
-[
- [2/10, 3/10, 5/10],
- [4/10, 1/10, 5/10],
- [1/10, 1/10, 8/10]
-]
-```
-
-Result:
-
-```
-[
- [0.2, 0.3, 0.5],
- [0.4, 0.1, 0.5],
- [0.1, 0.1, 0.8]
-]
-```
-
-Now each row sums to 1.
 
 ---
 
 ## Important Rule
 
-After normalization:
-
-Every row must satisfy:
+Every row must sum to:
 
 $$
-sum\_j P(j \mid i) = 1
+1
 $$
 
-If a row was:
+Because it represents:
 
-```
-[0, 0, 10]
-```
-
-After normalization:
-
-```
-[0, 0, 1]
-```
+👉 “All possible next tokens”
 
 ---
 
-## Why Convert to Float?
+## Why `keepdim=True`?
 
-We use:
+Without it:
 
-```python
-bigram_counts.float()
-```
+* shape = `(V,)`
 
-Because:
+With it:
 
-* Probabilities require fractional values
-* Integers cannot represent decimals
-* Neural networks operate in floating point
+* shape = `(V, 1)`
 
-Probabilities must satisfy:
-
-$$
-0 \le p \le 1
-$$
-
-So float dtype is required.
+👉 This allows proper broadcasting during division.
 
 ---
 
-# 4. Sampling with torch.multinomial
+# 4. Generation (The Fun Part)
 
-Generation uses:
+We now generate text using probabilities.
+
+---
+
+## Code
 
 ```python
+probs = bigram_probs[current]
 next_token = torch.multinomial(probs, num_samples=1).item()
 ```
 
-Let’s break this down.
+---
+
+## What Is Happening?
+
+We sample the next token based on probabilities.
 
 ---
 
-## What Is `probs`?
-
-Example:
+### Example
 
 ```
 probs = [0.2, 0.5, 0.3]
 ```
 
-Meaning:
-
-* 20% chance → index 0
-* 50% chance → index 1
-* 30% chance → index 2
+* 50% → token 1
+* 30% → token 2
+* 20% → token 0
 
 ---
 
-## What Does `torch.multinomial()` Do?
-
-It samples an index based on probability weights.
-
-If:
-
-```
-probs = [0, 0, 1]
-```
-
-It will always return:
-
-```
-2
-```
-
-If:
-
-```
-probs = [0.2, 0.5, 0.3]
-```
-
-It randomly returns:
-
-* 1 about 50% of the time
-* 2 about 30% of the time
-* 0 about 20% of the time
+👉 This is **probabilistic selection**, not deterministic.
 
 ---
 
-## What Does `num_samples=1` Mean?
+# 5. Why Not Use Argmax?
 
-It returns one sampled index.
-
-If `num_samples=3`, it would return three sampled indices.
-
----
-
-## Why `.item()`?
-
-`multinomial()` returns a tensor:
-
-```
-tensor([1])
-```
-
-`.item()` converts it into a Python integer:
-
-```
-1
-```
-
----
-
-# 5. Why Sampling Creates Diversity
-
-If we used:
+If we use:
 
 ```python
 torch.argmax(probs)
 ```
 
-The model would always choose the most likely token.
+We always pick the highest value.
 
-That would make output deterministic and repetitive.
-
-Sampling introduces controlled randomness.
-
-This is what gives text generation variety.
+👉 Output becomes repetitive and boring.
 
 ---
 
-# 6. Observed Output Behavior
+### Sampling gives:
 
-Example output:
+* variation
+* creativity
+* more realistic text
+
+---
+
+# 6. What the Model Actually Learns
+
+This model learns:
+
+👉 “What characters follow other characters”
+
+---
+
+### Example Behavior
+
+```
+"q" → almost always followed by "u"
+```
+
+---
+
+# 7. Output Behavior
+
+Example:
 
 ```
 Ayoowifemencofllonondsoul, ay, l his LI wde he...
 ```
 
-Observations:
+---
 
-✔ Looks Shakespeare-like
-✔ Contains realistic character transitions
-✔ Preserves local structure
-✘ No long-term coherence
-✘ Words break apart
-✘ No grammatical consistency
+### What It Gets Right
+
+✔ Local patterns
+✔ Character transitions
+✔ Looks vaguely like Shakespeare
 
 ---
 
-# 6. Why Does It Fail?
+### What It Gets Wrong
+
+✘ No words
+✘ No grammar
+✘ No long-term structure
+
+---
+
+# 8. Why It Fails
 
 Because it only models:
 
@@ -377,48 +306,35 @@ $$
 P(t_{i+1} \mid t_i)
 $$
 
-It does NOT model:
+It has:
 
-* Words
-* Sentences
-* Grammar
-* Long-range structure
-
-It has no memory beyond one token.
+* No memory beyond 1 token
+* No understanding of words
+* No structure
 
 ---
 
-# 7. Scaling Problem of N-grams
+# 9. Scaling Problem (Why This Doesn’t Work)
 
-If vocab_size = V
+If vocabulary size = $V$
 
-Bigram size:
+---
+
+### Bigram
 
 $$
 V^2
 $$
 
-Trigram size:
+### Trigram
 
 $$
 V^3
 $$
 
-4-gram size:
-
-$$
-V^4
-$$
-
-Growth is exponential:
-
-$$
-O(V^{\text{memory}})
-$$
-
 ---
 
-Exponential growth:
+### Example
 
 If:
 
@@ -426,113 +342,115 @@ $$
 V = 100
 $$
 
-Bigram:
+Then:
 
-$$
-100^2 = 10{,}000
-$$
-
-Trigram:
-
-$$
-100^3 = 1{,}000{,}000
-$$
-
-4-gram:
-
-$$
-100^4 = 100{,}000{,}000
-$$
-
-This quickly becomes impossible for real vocab sizes (~50,000 tokens).
+* Bigram → 10,000
+* Trigram → 1,000,000
+* 4-gram → 100,000,000
 
 ---
 
-# 8. Core Limitation
+👉 Growth is exponential:
 
-Bigram models attempt to:
-
-Memorize exact token transitions.
-
-They do not learn continuous representations.
-
-Memory requirements explode exponentially as context increases.
+$$
+O(V^{\text{memory}})
+$$
 
 ---
 
-# 9. Why This Matters
+# 10. Core Limitation
 
-The failure of n-grams motivated neural language models.
+Bigram models:
 
-Instead of storing exact combinations:
+* Memorize exact transitions
+* Do NOT generalize
+* Do NOT learn representations
+
+---
+
+# 11. Why Neural Models Replaced This
+
+Instead of storing counts:
 
 Neural models:
 
 * Learn embeddings
-* Learn continuous representations
-* Share statistical strength across tokens
-* Scale more efficiently
-
-This leads to transformers.
+* Share patterns across tokens
+* Scale efficiently
 
 ---
 
-# 10. Conceptual Bridge to Neural Bigram
+# 12. Bridge to Neural Bigram
 
-Statistical bigram:
+Statistical:
 
 $$
 P(t_{i+1} \mid t_i)
 $$
 
-Neural bigram:
+Neural:
 
 $$
 P(t_{i+1} \mid \text{Embedding}(t_i))
 $$
 
-Instead of storing counts:
+---
 
-We learn probability distributions via parameters.
-
-This introduces:
-
-* Embedding layer
-* Linear layer
-* Softmax
-* Cross-entropy loss
-* Backpropagation
+👉 Instead of lookup tables, we learn parameters.
 
 ---
 
-# Summary of Part 2
+# 13. Code Summary (Connect Everything)
+
+```python
+# Build counts
+bigram_counts = torch.zeros((vocab_size, vocab_size))
+...
+
+# Convert to probabilities
+bigram_probs = bigram_counts.float()
+bigram_probs = bigram_probs / bigram_probs.sum(dim=1, keepdim=True)
+
+# Generate text
+next_token = torch.multinomial(probs, num_samples=1).item()
+```
+
+---
+
+# Core Mental Model
+
+```id="mental_model"
+Current Token → Look Row → Get Probabilities → Sample → Next Token
+```
+
+Repeat this loop → generate text.
+
+---
+
+# Summary
 
 You now understand:
 
-* How bigram probability tables are constructed
-* How row normalization works (mechanically)
-* Why `keepdim=True` matters
-* How broadcasting works in PyTorch
-* Why probabilities require floats
-* How `torch.multinomial()` samples
-* Why sampling creates creative output
-* Why n-grams scale exponentially
-* Why deep learning replaced discrete n-grams
+* How bigram tables are built
+* How probabilities are computed
+* How sampling works
+* Why output looks “kind of real”
+* Why it fails for real language
 
 ---
 
 # What Comes Next
 
-Part 3 — Neural Bigram Model
+👉 Part 3 — Neural Bigram Model
 
-We replace the count table with:
+We replace counts with:
 
-Embedding → Linear Layer → Softmax
+Embedding → Softmax
 
-This introduces:
+Now the model will:
 
-* Learnable parameters
-* Gradient descent
-* Real training loop
+* Learn instead of memorize
+* Use gradients
+* Train like real neural networks
 
-And bridges us toward transformers.
+---
