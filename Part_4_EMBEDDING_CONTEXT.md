@@ -1,24 +1,20 @@
-# 🧠 From Neural Bigram → Embeddings → Context → Transformer Motivation
+# Part 4 — From Neural Bigram → Embeddings → Context → Why Transformers Exist
 
 ---
 
-# 1. Where We Left Off: Neural Bigram
+# 1. Where We Left Off
 
-We built:
+In Part 3, we built:
 
-```text
-P(next_token | current_token)
-```
+$$
+P(\text{next token} \mid \text{current token})
+$$
 
 Model:
 
 ```text
-W shape = (V, V)
+Embedding table (V × V) → logits
 ```
-
-* row = current token
-* column = next token
-* values = logits
 
 ---
 
@@ -27,28 +23,40 @@ W shape = (V, V)
 ```text
 ❌ Only 1-token memory
 ❌ No understanding of structure
-❌ No long-range dependencies
+❌ No long-range context
 ```
 
 ---
 
-# 2. Transition: Why Move Beyond Bigram?
+# 2. What We Actually Want
+
+Real language depends on **context**, not just one token.
 
 We want:
 
+$$
+P(\text{next token} \mid \text{previous tokens})
+$$
+
+Example:
+
 ```text
-P(next_token | previous tokens)
+"I am going to the ___"
 ```
 
-This requires:
-
-* richer representation
-* ability to generalize
-* ability to use context
+→ "store", "gym", "office" (depends on context)
 
 ---
 
-# 3. Embeddings: First Real Representation
+👉 This requires:
+
+* memory
+* representation
+* generalization
+
+---
+
+# 3. Step 1 — Introduce Embeddings
 
 We move from:
 
@@ -81,10 +89,18 @@ nn.Linear(n_embd, vocab_size)
 
 ---
 
-# 4. What Are Embeddings?
+# 4. What Is an Embedding? (Important)
+
+An embedding is:
+
+👉 A learned vector representation of a token
+
+---
+
+## Example
 
 ```text
-embedding = learned vector representation of a token
+"h" → [0.12, -0.44, 0.91, ...]
 ```
 
 ---
@@ -92,52 +108,77 @@ embedding = learned vector representation of a token
 ## Key Insight
 
 ```text
-Embeddings capture meaning via geometry
+Similar tokens → similar vectors
 ```
 
-Tokens with similar behavior:
+---
+
+## Why This Works
+
+During training:
+
+* tokens used in similar contexts
+* get similar gradients
+* end up close in vector space
+
+---
+
+## Visual
 
 ```text
-→ similar vectors
+Vector space:
+
+      king
+        ↑
+ man →   → woman
+        ↓
+      queen
 ```
+
+👉 Meaning emerges from geometry
 
 ---
 
-## Where similarity is learned
+# 5. What Does the Linear Layer Do?
 
 ```python
-x = self.token_embedding_table(idx)
+nn.Linear(n_embd, vocab_size)
 ```
-
-👉 NOT in the linear layer
 
 ---
 
-# 5. Role of Each Component
+## Formula
 
-| Component    | Role                 |
-| ------------ | -------------------- |
-| Embedding    | learn meaning        |
-| Linear layer | map meaning → logits |
-
----
-
-# 6. Linear Layer Explained
-
-```python
-nn.Linear(in_features, out_features)
-```
-
-Computes:
-
-```text
+$$
 y = xW + b
-```
+$$
 
-In our case:
+---
+
+## Intuition
 
 ```text
-(embedding) → (logits for vocab)
+Embedding → transformed → logits
+```
+
+---
+
+👉 It maps "meaning" → "next token scores"
+
+---
+
+# 6. Full Forward Flow
+
+```text
+Token IDs
+   ↓
+Embedding Lookup
+   ↓
+Dense Vector (meaning)
+   ↓
+Linear Layer
+   ↓
+Logits
 ```
 
 ---
@@ -147,7 +188,7 @@ In our case:
 ## Training
 
 ```text
-logits → cross_entropy → loss → backward → update weights
+logits → cross_entropy → loss → backward → update
 ```
 
 ## Inference
@@ -158,57 +199,56 @@ logits → softmax → probabilities → sampling
 
 ---
 
-# 8. Sampling and Temperature
-
-```text
-probs = softmax(logits / temperature)
-```
-
----
-
-## Behavior
-
-| Temperature | Effect        |
-| ----------- | ------------- |
-| low (~0)    | deterministic |
-| 1.0         | normal        |
-| high        | random        |
-
----
-
-# 9. New Limitation (VERY IMPORTANT)
+# 8. Important Observation (CRITICAL)
 
 Even with embeddings:
 
 ```text
-❌ each token processed independently
+Each token is processed independently
 ```
 
-Still:
+---
+
+👉 This model still learns:
+
+$$
+P(\text{next token} \mid \text{current token})
+$$
+
+---
+
+# 🚨 This is the key limitation
+
+---
+
+# 9. The Context Problem
+
+Language depends on multiple tokens:
 
 ```text
-P(next_token | current_token)
+"The bank near the river"
+"The bank approved the loan"
 ```
 
----
-
-# 10. Introducing Context
-
-We now want:
-
-```text
-P(next_token | last N tokens)
-```
+Same word → different meaning
 
 ---
 
-# 11. How to Combine Token Embeddings?
+👉 We need:
 
-We explored 3 methods:
+$$
+P(\text{next token} \mid t_1, t_2, ..., t_n)
+$$
 
 ---
 
-## Option 1: Concatenation
+# 10. How Do We Combine Tokens?
+
+We explored 3 approaches.
+
+---
+
+## Option 1 — Concatenation
 
 ```text
 [t1, t2, t3] → [e1 | e2 | e3]
@@ -216,35 +256,53 @@ We explored 3 methods:
 
 ---
 
+### Visual
+
+```text
+[e1][e2][e3] → one long vector
+```
+
+---
+
 ### Pros
 
-* preserves order
-* expressive
+✔ preserves order
+✔ expressive
 
 ---
 
 ### Cons
 
 ```text
-❌ input size grows with sequence length
-❌ fixed context length
-❌ poor scalability
+❌ grows with sequence length
+❌ fixed context size
+❌ not scalable
 ```
 
 ---
 
-## Option 2: Average Embeddings
+## Option 2 — Average Embeddings
 
 ```text
-[t1, t2, t3] → average(e1, e2, e3)
+[e1 + e2 + e3] / 3
+```
+
+---
+
+### Visual
+
+```text
+[e1] + [e2] + [e3]
+        ↓
+     average vector
 ```
 
 ---
 
 ### Pros
 
-* fixed size
-* efficient
+✔ simple
+✔ fixed size
 
 ---
 
@@ -252,13 +310,13 @@ We explored 3 methods:
 
 ```text
 ❌ loses order
-❌ cannot capture structure
-❌ bag-of-words behavior
+❌ "dog bites man" = "man bites dog"
+❌ behaves like bag-of-words
 ```
 
 ---
 
-## Option 3: MLP (on concatenation)
+## Option 3 — MLP on Concatenation
 
 ```text
 concat → neural network → logits
@@ -268,57 +326,71 @@ concat → neural network → logits
 
 ### Pros
 
-* more expressive
+✔ more expressive
 
 ---
 
 ### Cons
 
 ```text
-❌ still fixed input size
+❌ still fixed size
 ❌ still scales poorly
 ```
 
 ---
 
-# 12. Critical Insight
+# 11. Core Limitation (Important Insight)
 
-All these methods:
+All approaches:
 
 ```text
-❌ combine tokens into ONE fixed vector
+❌ compress multiple tokens into ONE vector
 ```
-
-This is the core limitation.
 
 ---
 
-# 13. Why This Fails
+👉 Information gets lost.
 
-Example:
+---
+
+# 12. Why This Fails (Critical Example)
 
 ```text
 "dog bites man"
 "man bites dog"
 ```
 
-Average embeddings:
+---
+
+### Average embeddings
 
 ```text
 → same representation
 ```
 
-👉 meaning is lost
+---
+
+👉 Order is lost → meaning destroyed
 
 ---
 
-# 14. Enter Transformers (Motivation)
+# 13. What We Actually Need
 
 Instead of:
 
 ```text
-combine → single vector
+many tokens → one vector
 ```
+
+We want:
+
+```text
+each token → interacts with other tokens
+```
+
+---
+
+# 14. Enter Attention (Transformer Idea)
 
 Transformers do:
 
@@ -326,184 +398,110 @@ Transformers do:
 each token attends to all other tokens
 ```
 
-From lecture:
-
-```text
-each word attends to each other word
-```
-
-
-
 ---
 
-# 15. Attention Complexity
+## Visual
 
 ```text
-O(n²)
-```
-
-Because:
-
-```text
-each token interacts with every other token
+t1 → t2, t3, t4
+t2 → t1, t3, t4
+t3 → t1, t2, t4
 ```
 
 ---
 
-## Implication
-
-Doubling sequence length:
-
-```text
-2n → (2n)² = 4n²
-```
-
-👉 4x compute + memory
+👉 No compression
+👉 No information loss
+👉 Dynamic relationships
 
 ---
 
-# 16. Why LLMs Have Context Limits
+# 15. Why Attention Is Expensive
+
+If sequence length = n
+
+Each token compares with all others:
+
+$$
+O(n^2)
+$$
+
+---
+
+## Visual
+
+```text
+n tokens → n × n interactions
+```
+
+---
+
+## Example
+
+```text
+n = 128 → 16,384 interactions
+```
+
+---
+
+Doubling:
+
+```text
+128 → 256 → 4x computation
+```
+
+---
+
+# 16. Why Context Length Is Limited
 
 Not conceptual — practical:
 
 ```text
-max_context_length = engineering constraint
+Limited by memory and compute
 ```
-
-Due to:
-
-* memory
-* compute
-* attention cost
 
 ---
 
-## Important Clarification
-
-```text
-model doesn’t "lose context"
-```
-
-👉 it simply **cannot see beyond limit**
+👉 Model does NOT forget
+👉 It simply cannot see beyond window
 
 ---
 
 # 17. Key Mental Model
 
-| Concept        | Meaning                   |
-| -------------- | ------------------------- |
-| Transformer    | flexible context modeling |
-| Context window | memory limit              |
+| Concept        | Meaning                |
+| -------------- | ---------------------- |
+| Embedding      | meaning representation |
+| Linear layer   | meaning → prediction   |
+| Context        | multiple tokens        |
+| Attention      | token interaction      |
+| Context window | max visible tokens     |
 
 ---
 
-# 🧪 Checkpoint Q&A
+# Where You Are Now
+
+You now understand:
+
+✔ neural bigram
+✔ embeddings
+✔ representation learning
+✔ why single-token models fail
+✔ why naive context methods fail
+✔ why attention is needed
 
 ---
 
-## Q1. Where is token similarity learned?
+# What Comes Next
 
-**Answer:**
-In the embedding table (`nn.Embedding`), not in the linear layer.
+👉 Part 5 — Attention (Core of Transformers)
 
----
+We will build:
 
-## Q2. What does embedding represent?
-
-**Answer:**
-A learned vector capturing token behavior and relationships.
+```text
+Query → Key → Value → Attention weights
+```
 
 ---
 
-## Q3. Why add a linear layer?
-
-**Answer:**
-To map embedding → logits over vocabulary.
-
----
-
-## Q4. Why not keep vocab × vocab matrix?
-
-**Answer:**
-Embeddings allow generalization and reduce parameter rigidity.
-
----
-
-## Q5. What is the limitation of embedding model?
-
-**Answer:**
-No context — each token processed independently.
-
----
-
-## Q6. Why does averaging fail?
-
-**Answer:**
-It loses order → becomes bag-of-words.
-
----
-
-## Q7. Why does concatenation fail?
-
-**Answer:**
-Input size grows with sequence length → not scalable.
-
----
-
-## Q8. What problem do all naive methods share?
-
-**Answer:**
-They compress all tokens into a single fixed vector.
-
----
-
-## Q9. What does attention solve?
-
-**Answer:**
-Dynamic interaction between tokens without fixed compression.
-
----
-
-## Q10. Why is attention O(n²)?
-
-**Answer:**
-Each token compares with every other token.
-
----
-
-## Q11. Why do LLMs have context limits?
-
-**Answer:**
-Due to compute and memory constraints of attention.
-
----
-
-## Q12. What happens when context exceeds limit?
-
-**Answer:**
-Older tokens are truncated (not visible to model).
-
----
-
-## Q13. What happens when sequence length doubles?
-
-**Answer:**
-Compute and memory increase ~4x (quadratic scaling).
-
----
-
-# 🚀 Where You Are Now
-
-You understand:
-
-* neural bigram ✅
-* embeddings ✅
-* representation learning ✅
-* context problem ✅
-* limitations of naive approaches ✅
-* motivation for transformers ✅
-
----
-
-### Code:
- [Embedding and language models](embedding_language_model.py)
+This is where things become powerful.
