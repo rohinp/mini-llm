@@ -217,7 +217,52 @@ Wrong & confident        → huge loss
 
 * Increase correct probabilities
 * Decrease wrong ones
+---
 
+## Why the function is named forward
+In neural networks there are two passes during training.
+
+`Forward pass`
+Data flows through the network to produce predictions.
+
+`input → model → logits → loss`
+
+`Backward pass`
+Gradients flow backwards to update weights.
+
+`loss → gradients → update weights`
+
+PyTorch naming reflects this:
+
+`forward()`
+means
+```
+how the data flows through the model.
+```
+You never call forward() manually.
+
+Instead you call the model like a function:
+```
+logits, loss = model(x, y)
+```
+Under the hood PyTorch does:
+```
+model.__call__()
+   → model.forward()
+```
+After the forward pass, PyTorch stores the computation graph so that when you later call:
+```
+loss.backward()
+```
+it can compute gradients.
+
+So the training loop roughly looks like:
+```
+for each batch:
+    logits, loss = model(x, y)   ← forward pass
+    loss.backward()              ← backward pass
+    optimizer.step()             ← update weights
+```
 ---
 
 # 8. Why We Reshape
@@ -254,6 +299,105 @@ We solve B*T classification problems at once
 ```
 
 ---
+
+## Visualizing (B,T,C) → (B*T,C)
+This is an important concept.
+
+Let’s walk through a concrete example.
+
+Example
+Suppose:
+```
+batch_size B = 2
+sequence_length T = 3
+vocab_size C = 4
+```
+Then logits shape is:
+
+```(B,T,C)```
+which is
+
+```(2,3,4)```
+What this means
+```
+batch 1
+
+token1 → logits [a b c d]
+token2 → logits [a b c d]
+token3 → logits [a b c d]
+```
+```
+batch 2
+token1 → logits [a b c d]
+token2 → logits [a b c d]
+token3 → logits [a b c d]
+```
+So in total we have:
+
+6 predictions
+because
+```
+2 batches × 3 tokens = 6 predictions
+```
+Visual matrix
+Logits before reshape:
+```
+[
+ batch1
+  [
+    [l11 l12 l13 l14]
+    [l21 l22 l23 l24]
+    [l31 l32 l33 l34]
+  ]
+
+ batch2
+  [
+    [l41 l42 l43 l44]
+    [l51 l52 l53 l54]
+    [l61 l62 l63 l64]
+  ]
+]
+```
+Shape:
+```
+(2,3,4)
+```
+After reshape
+```(B*T, C)```
+becomes
+
+```(6,4)```
+Now it becomes:
+```
+[
+[l11 l12 l13 l14]
+[l21 l22 l23 l24]
+[l31 l32 l33 l34]
+[l41 l42 l43 l44]
+[l51 l52 l53 l54]
+[l61 l62 l63 l64]
+]
+```
+Now each row is one prediction.
+
+Exactly what `cross_entropy` expects.
+
+Targets reshape
+Targets originally:
+
+`(2,3)`
+Example:
+```
+[
+ [2,1,3],
+ [0,2,1]
+]
+```
+After reshape:
+```
+[2,1,3,0,2,1]
+```
+Now they align with the logits rows.
 
 # 9. Training Loop (Where Learning Happens)
 
