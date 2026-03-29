@@ -148,12 +148,12 @@ Planned topics include:
 
 If you are unsure where to begin:
 
-👉 Start with [Bigram Model](./PART_2_BIGRAM_MODEL.md)
+👉 Start with [Bigram Model](./02_bigram.md)
 
 Then jump back to:
 
-* [Foundations](./FOUNDATIONS.md)
-* [Data Pipeline](./PART_1_DATA_PIPELINE.md)
+* [Foundations](./01_foundations.md)
+* [Data Pipeline](./00_data_pipeline.md)
 
 That path is often easier for developers than starting with theory first.
 
