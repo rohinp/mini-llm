@@ -39,7 +39,7 @@ A lot of the ideas are revisited across parts, with more context each time.
 
 ## Recommended Learning Path
 
-### 1. [Foundations](./FOUNDATIONS.md)
+### 1. [Foundations](./01_foundations.md)
 
 Start here for the mental models behind language models, tokens, embeddings, batches, gradients, and training.
 
@@ -47,7 +47,7 @@ This section gives you the vocabulary needed for everything that follows.
 
 ---
 
-### 2. [Data Pipeline](./PART_1_DATA_PIPELINE.md)
+### 2. [Data Pipeline](./00_data_pipeline.md)
 
 Learn how raw text becomes tensors and training batches.
 
@@ -63,7 +63,7 @@ If this feels slightly abstract at first, keep going — it becomes much clearer
 
 ---
 
-### 3. [Bigram Model](./PART_2_BIGRAM_MODEL.md)
+### 3. [Bigram Model](./02_bigram.md)
 
 This is the best starting point for most developers.
 
@@ -77,7 +77,7 @@ Just counts, probabilities, and text generation.
 
 ---
 
-### 4. [Neural Bigram](./PART_3_NEURAL_BIGRAM.md)
+### 4. [Neural Bigram](./03_neural_bigram.md)
 
 This is where real learning begins.
 
@@ -104,7 +104,7 @@ This introduces:
 
 ---
 
-### 5. [Embedding + Context Motivation](./PART_4_EMBEDDING_CONTEXT.md)
+### 5. [Embedding + Context Motivation](./04_embedding_context.md)
 
 This section explains why single-token models are not enough.
 
@@ -119,7 +119,7 @@ This step is intentionally included to make the transition smoother.
 
 ---
 
-### 6. [Context Concat Model](./PART_5_CONTEXT_CONCAT_MODEL.md)
+### 6. [Context Concat Model](./05_context_concat.md)
 
 A step toward using multiple previous tokens together.
 
