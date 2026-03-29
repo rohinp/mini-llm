@@ -64,38 +64,21 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-
-@torch.no_grad()
-def estimate_loss():
-    model.eval()
-    out = {}
-    for split in ("train", "val"):
-        losses = torch.zeros(eval_iters)
-        for k in range(eval_iters):
-            xb, yb = get_batch(split)
-            xb, yb = xb.to(device), yb.to(device)
-            _, loss = model(xb, yb)
-            losses[k] = loss.item()
-        out[split] = losses.mean().item()
-    model.train()
-    return out
-
-
 # training loop
 for step in range(max_iters):
-    if step % eval_interval == 0:
-        losses = estimate_loss()
-        print(
-            f"step {step}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
-        )
-
     xb, yb = get_batch("train")
+
     logits, loss = model(xb, yb)
-    optimizer.zero_grad()  # clear old gradients
-    loss.backward()  # compute gradients
-    optimizer.step()  # update weights
+
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    if step % 200 == 0:
+        print(f"step {step}: loss {loss.item():.4f}")
 
 
+# generate text
 model.eval()
 context = torch.zeros((1, 1), dtype=torch.long)
 generated = model.generate(context, max_new_tokens=200)
