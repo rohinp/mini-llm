@@ -161,9 +161,9 @@ loss = cross_entropy(probs, targets)
 
 Because `F.cross_entropy` internally does:
 
-$$
-\text{log\_softmax}(logits)
-$$
+```python
+log_softmax(logits)
+```
 
 ---
 
