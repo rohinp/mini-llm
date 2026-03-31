@@ -15,6 +15,7 @@ Just counting patterns in data.
 We want to answer:
 
 👉 “Given a token, what is the most likely next token?”
+As a developer this sounds very similar to a function, a function takes an argument and returns some result. In this case both input and output is token. Token can be a character, word, sub-word, etc. It is the smallest unit which can be used to communicate with a model/function. In our example or explanations we are dealing with charachter as token.
 
 Mathematically:
 
@@ -23,6 +24,8 @@ P(t_{i+1} \mid t_i)
 $$
 
 This is called a **Bigram Model**.
+
+Check the visualization [here](./visualizations/bigram.html). This is a self contained html file can be viewed directly in a browser.
 
 ---
 
