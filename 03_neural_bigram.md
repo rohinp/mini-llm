@@ -18,6 +18,8 @@ But instead of counting:
 
 👉 We learn this using parameters + training
 
+Check the visualization [here](./visualizations/neural_bigram.html). This one is a self contained html file can be viewed directly in a browser.
+
 ---
 
 # 1. From Table → Model
